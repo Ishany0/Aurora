@@ -1,0 +1,67 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny all access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper Functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // User root document & subcollections
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+
+      // Private journal entries with strict owner boundary
+      match /entries/{entryId} {
+        allow get, list: if isOwner(userId);
+        
+        allow create: if isOwner(userId)
+          && isValidId(entryId)
+          && incoming().userId == request.auth.uid
+          && incoming().content is string
+          && incoming().content.size() <= 20000;
+
+        allow update: if isOwner(userId)
+          && incoming().userId == existing().userId;
+
+        allow delete: if isOwner(userId);
+      }
+
+      // Mood tag corrections subcollection for calibration
+      match /corrections/{correctionId} {
+        allow read, write: if isOwner(userId) && isValidId(correctionId);
+      }
+
+      // User settings and companion state
+      match /settings/{settingId} {
+        allow read, write: if isOwner(userId) && isValidId(settingId);
+      }
+    }
+
+    // Admin aggregate path: strictly denied to standard users
+    match /admin_aggregates/{docId} {
+      allow read, write: if false;
+    }
+  }
+}
