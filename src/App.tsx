@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Navbar } from "./components/Navbar.js";
+import { LandingView } from "./components/LandingView.js";
 import { ReflectStudio } from "./components/ReflectStudio.js";
 import { TimelineView } from "./components/TimelineView.js";
 import { PatternDigestView } from "./components/PatternDigestView.js";
@@ -20,7 +21,7 @@ import type { JournalEntry, UserSettings, MoodCorrection } from "./types.js";
 import { Shield } from "lucide-react";
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<"reflect" | "timeline" | "patterns" | "companion" | "security">("reflect");
+  const [activeTab, setActiveTab] = useState<"landing" | "reflect" | "timeline" | "patterns" | "companion" | "security">("landing");
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   
   const userEmail = currentUser?.email || "alex.reflections@gmail.com";
@@ -132,6 +133,14 @@ export default function App() {
 
       {/* Main View Container */}
       <main className="flex-1 relative z-10">
+        {activeTab === "landing" && (
+          <LandingView
+            onSignIn={handleSignIn}
+            onContinueAsGuest={() => setActiveTab("reflect")}
+            onOpenSupport={() => setIsSupportOpen(true)}
+          />
+        )}
+
         {activeTab === "reflect" && (
           <ReflectStudio
             userId={userId}
@@ -147,6 +156,7 @@ export default function App() {
             entries={entries}
             userId={userId}
             onEntriesChange={(updated) => setEntries(updated)}
+            onNavigateToReflect={() => setActiveTab("reflect")}
           />
         )}
 
@@ -168,6 +178,7 @@ export default function App() {
         {activeTab === "security" && (
           <SecurityPanel
             settings={settings}
+            userId={userId}
             onSettingsChange={(updated) => setSettings(updated)}
             onDataWiped={handleDataWiped}
           />

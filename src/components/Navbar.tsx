@@ -1,15 +1,13 @@
 import React from "react";
-import { Sparkles, Compass, BookOpen, BarChart3, ShieldCheck, HeartHandshake, Flame, LogIn, LogOut } from "lucide-react";
+import { Sparkles, Compass, BookOpen, BarChart3, ShieldCheck, HeartHandshake, Flame, LogOut } from "lucide-react";
 import type { UserSettings } from "../types.js";
 
 interface NavbarProps {
   activeTab: "reflect" | "timeline" | "patterns" | "companion" | "security";
   setActiveTab: (tab: "reflect" | "timeline" | "patterns" | "companion" | "security") => void;
   userEmail: string;
-  isFirebaseUser: boolean;
   settings: UserSettings;
   onOpenSupport: () => void;
-  onSignIn: () => void;
   onSignOut: () => void;
 }
 
@@ -17,10 +15,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   setActiveTab,
   userEmail,
-  isFirebaseUser,
   settings,
   onOpenSupport,
-  onSignIn,
   onSignOut,
 }) => {
   return (
@@ -43,7 +39,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 Private Reflect
               </span>
             </div>
-            <p className="text-xs text-slate-400 hidden sm:block">Multimodal Reflection & Next Actions</p>
+            <p className="text-xs text-slate-400 hidden sm:block">Reflect privately. Find one manageable next step.</p>
           </div>
         </div>
 
@@ -51,19 +47,19 @@ export const Navbar: React.FC<NavbarProps> = ({
         <nav className="hidden md:flex items-center gap-1 bg-slate-900/90 p-1.5 rounded-xl border border-slate-800">
           <button
             onClick={() => setActiveTab("reflect")}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all ${
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${
               activeTab === "reflect"
                 ? "bg-indigo-600 text-white shadow-sm"
                 : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
             }`}
           >
             <Compass className="w-4 h-4" />
-            <span>Reflect</span>
+            <span>Reflect Studio</span>
           </button>
 
           <button
             onClick={() => setActiveTab("timeline")}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all ${
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${
               activeTab === "timeline"
                 ? "bg-indigo-600 text-white shadow-sm"
                 : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
@@ -75,7 +71,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           <button
             onClick={() => setActiveTab("patterns")}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all ${
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${
               activeTab === "patterns"
                 ? "bg-indigo-600 text-white shadow-sm"
                 : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
@@ -87,7 +83,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           <button
             onClick={() => setActiveTab("companion")}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all ${
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${
               activeTab === "companion"
                 ? "bg-indigo-600 text-white shadow-sm"
                 : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
@@ -99,7 +95,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           <button
             onClick={() => setActiveTab("security")}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all ${
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${
               activeTab === "security"
                 ? "bg-indigo-600 text-white shadow-sm"
                 : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
@@ -121,48 +117,42 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Quick Support / Disclaimer Button */}
           <button
             onClick={onOpenSupport}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white text-xs font-medium transition-colors"
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white text-xs font-medium transition-colors cursor-pointer"
             title="Crisis Resources & Non-Clinical Disclaimer"
           >
             <HeartHandshake className="w-3.5 h-3.5 text-rose-400" />
             <span className="hidden sm:inline">Support</span>
           </button>
 
-          {/* Auth Button & Profile Badge */}
-          {isFirebaseUser ? (
-            <div className="flex items-center gap-2 pl-2 border-l border-slate-800">
-              <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-teal-500 to-indigo-600 flex items-center justify-center text-xs font-bold text-white shadow-sm">
-                {userEmail.charAt(0).toUpperCase()}
-              </div>
-              <button
-                onClick={onSignOut}
-                className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-rose-400 transition-colors"
-                title="Sign out of Firebase"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={onSignIn}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-teal-500/10 hover:bg-teal-500/20 border border-teal-500/30 text-teal-300 text-xs font-medium transition-all"
-              title="Sign in with Google via Firebase Auth"
+          {/* Auth Profile Badge & Sign Out Button */}
+          <div className="flex items-center gap-2 pl-2 border-l border-slate-800">
+            <div
+              className="w-7 h-7 rounded-full bg-gradient-to-tr from-teal-500 to-indigo-600 flex items-center justify-center text-xs font-bold text-white shadow-sm"
+              title={userEmail || "Signed In"}
             >
-              <LogIn className="w-3.5 h-3.5" />
-              <span>Sign In</span>
+              {(userEmail || "U").charAt(0).toUpperCase()}
+            </div>
+            <button
+              onClick={onSignOut}
+              className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-rose-400 transition-colors cursor-pointer"
+              title="Sign out of Aurora"
+              aria-label="Sign out"
+            >
+              <LogOut className="w-4 h-4" />
             </button>
-          )}
+          </div>
         </div>
 
       </div>
 
       {/* Mobile Navigation Bar */}
-      <div className="md:hidden flex items-center justify-around border-t border-slate-800/80 bg-slate-950/95 py-2 px-2">
+      <div className="md:hidden flex items-center justify-around border-t border-slate-800/80 bg-slate-950/95 py-2 px-1">
         <button
           onClick={() => setActiveTab("reflect")}
-          className={`flex flex-col items-center gap-1 py-1 px-3 rounded-lg text-xs font-medium ${
+          className={`flex flex-col items-center gap-1 py-1.5 px-2 rounded-lg text-[11px] font-medium min-h-[44px] justify-center cursor-pointer ${
             activeTab === "reflect" ? "text-indigo-400" : "text-slate-400"
           }`}
+          aria-label="Reflect Studio"
         >
           <Compass className="w-4 h-4" />
           <span>Reflect</span>
@@ -170,9 +160,10 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         <button
           onClick={() => setActiveTab("timeline")}
-          className={`flex flex-col items-center gap-1 py-1 px-3 rounded-lg text-xs font-medium ${
+          className={`flex flex-col items-center gap-1 py-1.5 px-2 rounded-lg text-[11px] font-medium min-h-[44px] justify-center cursor-pointer ${
             activeTab === "timeline" ? "text-indigo-400" : "text-slate-400"
           }`}
+          aria-label="Journal timeline"
         >
           <BookOpen className="w-4 h-4" />
           <span>Journal</span>
@@ -180,9 +171,10 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         <button
           onClick={() => setActiveTab("patterns")}
-          className={`flex flex-col items-center gap-1 py-1 px-3 rounded-lg text-xs font-medium ${
+          className={`flex flex-col items-center gap-1 py-1.5 px-2 rounded-lg text-[11px] font-medium min-h-[44px] justify-center cursor-pointer ${
             activeTab === "patterns" ? "text-indigo-400" : "text-slate-400"
           }`}
+          aria-label="Patterns"
         >
           <BarChart3 className="w-4 h-4" />
           <span>Patterns</span>
@@ -190,9 +182,10 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         <button
           onClick={() => setActiveTab("companion")}
-          className={`flex flex-col items-center gap-1 py-1 px-3 rounded-lg text-xs font-medium ${
-            activeTab === "companion" ? "text-indigo-400" : "text-slate-400"
+          className={`flex flex-col items-center gap-1 py-1.5 px-2 rounded-lg text-[11px] font-medium min-h-[44px] justify-center cursor-pointer ${
+            activeTab === "companion" ? "text-amber-400" : "text-slate-400"
           }`}
+          aria-label="Companion"
         >
           <Sparkles className="w-4 h-4" />
           <span>Companion</span>
@@ -200,9 +193,10 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         <button
           onClick={() => setActiveTab("security")}
-          className={`flex flex-col items-center gap-1 py-1 px-3 rounded-lg text-xs font-medium ${
-            activeTab === "security" ? "text-indigo-400" : "text-slate-400"
+          className={`flex flex-col items-center gap-1 py-1.5 px-2 rounded-lg text-[11px] font-medium min-h-[44px] justify-center cursor-pointer ${
+            activeTab === "security" ? "text-teal-400" : "text-slate-400"
           }`}
+          aria-label="Security & Privacy"
         >
           <ShieldCheck className="w-4 h-4" />
           <span>Security</span>

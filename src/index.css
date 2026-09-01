@@ -1,15 +1,42 @@
 @import "tailwindcss";
 
+:root {
+  --color-bg-primary: #030712;
+  --color-bg-secondary: #0b1120;
+  --color-bg-card: #0f172a;
+  --color-bg-card-hover: #1e293b;
+  --color-border: #1e293b;
+  --color-border-subtle: #1e293b80;
+  --color-border-focus: #14b8a6;
+  --color-text-primary: #f8fafc;
+  --color-text-secondary: #94a3b8;
+  --color-text-muted: #64748b;
+  --color-accent-teal: #2dd4bf;
+  --color-accent-indigo: #818cf8;
+  --color-accent-violet: #a78bfa;
+  --color-accent-amber: #fbbf24;
+  --color-accent-rose: #f43f5e;
+  --font-display: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-body: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
 @layer base {
   body {
-    background-color: #020617;
-    color: #f8fafc;
-    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    background-color: var(--color-bg-primary);
+    color: var(--color-text-primary);
+    font-family: var(--font-body);
     overflow-x: hidden;
   }
 
-  h1, h2, h3, .font-display {
-    font-family: 'Space Grotesk', system-ui, sans-serif;
+  h1, h2, h3, h4, .font-display {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+  }
+
+  /* Accessible focus states for all interactive elements */
+  *:focus-visible {
+    outline: 2px solid #2dd4bf;
+    outline-offset: 2px;
   }
 }
 
@@ -24,8 +51,48 @@
   }
 }
 
+@keyframes auroraWave {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.15;
+  }
+  50% {
+    transform: translate(20px, -15px) scale(1.08);
+    opacity: 0.25;
+  }
+}
+
+@keyframes pulseSubtle {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
 .animate-fade-in {
   animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-aurora {
+  animation: auroraWave 12s ease-in-out infinite;
+}
+
+.animate-pulse-subtle {
+  animation: pulseSubtle 2.5s ease-in-out infinite;
+}
+
+/* Accessibility: Respect prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* Hide standard scrollbars for smooth chips */
@@ -36,3 +103,4 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+

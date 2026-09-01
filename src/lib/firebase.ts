@@ -1,6 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, type User } from "firebase/auth";
 import { getFirestore, doc, getDocFromServer, collection, setDoc, getDoc, getDocs, deleteDoc, query, orderBy, onSnapshot } from "firebase/firestore";
+import { getStorage, ref, uploadString, getDownloadURL } from "firebase/storage";
 import firebaseConfig from "../../firebase-applet-config.json";
 
 // Initialize Firebase
@@ -9,7 +10,21 @@ const app = initializeApp(firebaseConfig);
 // CRITICAL: The app will break without specifying firestoreDatabaseId
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
+export const storage = getStorage(app);
 export const googleProvider = new GoogleAuthProvider();
+
+/**
+ * Uploads a user photo safely to their isolated storage path /users/{userId}/uploads/{uploadId}
+ */
+export async function uploadUserPhoto(userId: string, dataUrl: string, uploadId?: string): Promise<string> {
+  const fileId = uploadId || `photo_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const storageRef = ref(storage, `users/${userId}/uploads/${fileId}`);
+  
+  // upload data URL format (e.g. data:image/jpeg;base64,...)
+  const uploadResult = await uploadString(storageRef, dataUrl, "data_url");
+  const downloadUrl = await getDownloadURL(uploadResult.ref);
+  return downloadUrl;
+}
 
 export enum OperationType {
   CREATE = "create",

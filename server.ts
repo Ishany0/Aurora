@@ -58,26 +58,95 @@ app.get("/api/health", (_req, res) => {
 });
 
 /**
- * Full Reflection Pipeline: Mood & Signal -> Reflection -> Action
+ * Failure-Resilient Reflection Pipeline:
+ * Mood & Signal -> Reflection -> Action with graceful degradation and retry targeting
  */
 app.post("/api/reflect", rateLimitMiddleware, async (req, res) => {
   try {
     const data = req.body && typeof req.body === "object" ? req.body : {};
-    const { content, imageBase64, imageMime, correctionsContext } = data;
+    const {
+      content,
+      imageBase64,
+      imageMime,
+      correctionsContext,
+      entryId,
+      idempotencyKey,
+      retryTarget,
+      existingMoodResult,
+    } = data;
 
     if (!content || typeof content !== "string" || content.trim().length === 0) {
       return res.status(400).json({ error: "Reflection content is required." });
     }
 
-    // 1. Run Mood & Signal Agent (structured JSON)
+    const safeCorrections = Array.isArray(correctionsContext) ? correctionsContext : [];
+
+    // Target: Retry Reflection only (preserves existing Mood metadata)
+    if (retryTarget === "reflection" && existingMoodResult && typeof existingMoodResult === "object") {
+      const reflectionResult = await runReflectionAgent(
+        content,
+        existingMoodResult,
+        imageBase64,
+        imageMime
+      );
+
+      if (!reflectionResult) {
+        return res.json({
+          entryId,
+          idempotencyKey,
+          moodResult: existingMoodResult,
+          moodStatus: "available",
+          reflectionResult: null,
+          reflectionStatus: "unavailable",
+          actionResult: null,
+          actionStatus: "skipped",
+          canRetryReflection: true,
+        });
+      }
+
+      const actionResult = await runActionAgent(
+        content,
+        existingMoodResult,
+        reflectionResult.reflection,
+        safeCorrections
+      );
+
+      return res.json({
+        entryId,
+        idempotencyKey,
+        moodResult: existingMoodResult,
+        moodStatus: "available",
+        reflectionResult,
+        reflectionStatus: "available",
+        actionResult,
+        actionStatus: actionResult ? "available" : "unavailable",
+      });
+    }
+
+    // Step 1: Run Mood & Signal Agent (structured JSON with validation & repair)
     const moodResult = await runMoodAndSignalAgent(
       content,
       imageBase64,
       imageMime,
-      Array.isArray(correctionsContext) ? correctionsContext : []
+      safeCorrections
     );
 
-    // 2. Run Reflection Agent (concise, empathetic, non-clinical)
+    // If Mood & Signal fails completely (both initial & repair failed)
+    if (!moodResult) {
+      return res.json({
+        entryId,
+        idempotencyKey,
+        moodResult: null,
+        moodStatus: "unavailable",
+        reflectionResult: null,
+        reflectionStatus: "unavailable",
+        actionResult: null,
+        actionStatus: "skipped",
+        message: "Your entry was saved. Analysis is temporarily unavailable.",
+      });
+    }
+
+    // Step 2: Run Reflection Agent (concise, empathetic, non-clinical)
     const reflectionResult = await runReflectionAgent(
       content,
       moodResult,
@@ -85,22 +154,43 @@ app.post("/api/reflect", rateLimitMiddleware, async (req, res) => {
       imageMime
     );
 
-    // 3. Run Action Agent (one optional next step; null if acute concern)
+    // If Reflection fails, preserve mood metadata and allow retry
+    if (!reflectionResult) {
+      return res.json({
+        entryId,
+        idempotencyKey,
+        moodResult,
+        moodStatus: "available",
+        reflectionResult: null,
+        reflectionStatus: "unavailable",
+        actionResult: null,
+        actionStatus: "skipped",
+        canRetryReflection: true,
+      });
+    }
+
+    // Step 3: Run Action Agent (one optional next step; null if acute concern or failure)
     const actionResult = await runActionAgent(
       content,
       moodResult,
-      reflectionResult.reflection
+      reflectionResult.reflection,
+      safeCorrections
     );
 
     return res.json({
+      entryId,
+      idempotencyKey,
       moodResult,
+      moodStatus: "available",
       reflectionResult,
+      reflectionStatus: "available",
       actionResult,
+      actionStatus: actionResult ? "available" : "unavailable",
     });
   } catch (error: any) {
-    console.error("Error during reflection pipeline:", error);
+    console.error("Unexpected error during reflection pipeline:", error);
     return res.status(500).json({
-      error: "An unexpected error occurred during reflection analysis.",
+      error: "An unexpected error occurred during reflection processing.",
       details: error?.message || String(error),
     });
   }

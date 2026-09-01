@@ -7,15 +7,9 @@ import {
   collection,
   onSnapshot,
   getDocs,
-  getDoc,
   query,
   orderBy,
 } from "firebase/firestore";
-
-const ENTRIES_KEY = "aurora_journal_entries_v1";
-const CORRECTIONS_KEY = "aurora_mood_corrections_v1";
-const SETTINGS_KEY = "aurora_user_settings_v1";
-const INSIGHTS_KEY = "aurora_cached_insights_v1";
 
 /**
  * Strips all undefined properties from an object recursively to guarantee clean payloads.
@@ -24,12 +18,29 @@ export function sanitizePayload<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj));
 }
 
+// User-scoped LocalStorage Key Helpers
+function getEntriesKey(userId: string): string {
+  return `aurora_entries_${userId}`;
+}
+
+function getCorrectionsKey(userId: string): string {
+  return `aurora_corrections_${userId}`;
+}
+
+function getSettingsKey(userId: string): string {
+  return `aurora_settings_${userId}`;
+}
+
+function getInsightsKey(userId: string): string {
+  return `aurora_cached_insights_${userId}`;
+}
+
 // ----------------------------------------------------------------------------
-// Cloud Firestore Integration Functions
+// Cloud Firestore Integration Functions (Owner-Isolated)
 // ----------------------------------------------------------------------------
 
 export async function syncEntryToFirestore(userId: string, entry: JournalEntry): Promise<void> {
-  if (!auth.currentUser || auth.currentUser.uid !== userId) return;
+  if (!auth.currentUser || auth.currentUser.uid !== userId || entry.userId !== userId) return;
   const path = `users/${userId}/entries/${entry.id}`;
   try {
     const cleanData = sanitizePayload(entry);
@@ -54,9 +65,11 @@ export function subscribeToUserEntries(
   onEntriesReceived: (entries: JournalEntry[]) => void,
   onError?: (err: unknown) => void
 ): () => void {
-  if (!auth.currentUser || auth.currentUser.uid !== userId) {
+  if (!auth.currentUser || auth.currentUser.uid !== userId || !userId) {
+    onEntriesReceived([]);
     return () => {};
   }
+
   const collectionPath = `users/${userId}/entries`;
   try {
     const entriesRef = collection(db, "users", userId, "entries");
@@ -66,12 +79,17 @@ export function subscribeToUserEntries(
       (snapshot) => {
         const cloudEntries: JournalEntry[] = [];
         snapshot.forEach((docSnap) => {
-          cloudEntries.push(docSnap.data() as JournalEntry);
+          const data = docSnap.data() as JournalEntry;
+          // Validate ownership before storing or rendering
+          if (data && data.userId === userId) {
+            cloudEntries.push(data);
+          }
         });
-        if (cloudEntries.length > 0) {
-          saveStoredEntries(cloudEntries);
-          onEntriesReceived(cloudEntries);
-        }
+
+        // Always update the authenticated user's scoped cache
+        saveStoredEntries(userId, cloudEntries);
+        // CRITICAL: Always deliver the accurate query result, even if empty array []
+        onEntriesReceived(cloudEntries);
       },
       (error) => {
         if (onError) onError(error);
@@ -85,7 +103,7 @@ export function subscribeToUserEntries(
 }
 
 export async function syncCorrectionToFirestore(userId: string, correction: MoodCorrection): Promise<void> {
-  if (!auth.currentUser || auth.currentUser.uid !== userId) return;
+  if (!auth.currentUser || auth.currentUser.uid !== userId || correction.userId !== userId) return;
   const path = `users/${userId}/corrections/${correction.id}`;
   try {
     const clean = sanitizePayload(correction);
@@ -96,7 +114,7 @@ export async function syncCorrectionToFirestore(userId: string, correction: Mood
 }
 
 export async function syncSettingsToFirestore(userId: string, settings: UserSettings): Promise<void> {
-  if (!auth.currentUser || auth.currentUser.uid !== userId) return;
+  if (!auth.currentUser || auth.currentUser.uid !== userId || settings.userId !== userId) return;
   const path = `users/${userId}/settings/preferences`;
   try {
     const clean = sanitizePayload(settings);
@@ -107,82 +125,151 @@ export async function syncSettingsToFirestore(userId: string, settings: UserSett
 }
 
 // ----------------------------------------------------------------------------
-// Journal Entries Store
+// User-Isolated Journal Entries Store
 // ----------------------------------------------------------------------------
 
-export function getStoredEntries(): JournalEntry[] {
+export function getStoredEntries(userId: string): JournalEntry[] {
+  if (!userId) return [];
   try {
-    const raw = localStorage.getItem(ENTRIES_KEY);
-    if (!raw) return getSeedEntries();
-    return JSON.parse(raw);
+    const raw = localStorage.getItem(getEntriesKey(userId));
+    if (!raw) return [];
+    const parsed: JournalEntry[] = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((e) => e.userId === userId) : [];
   } catch (err) {
-    console.error("Error reading stored entries:", err);
-    return getSeedEntries();
+    console.error("Error reading stored entries for user:", err);
+    return [];
   }
 }
 
-export function saveStoredEntries(entries: JournalEntry[]): void {
+export function saveStoredEntries(userId: string, entries: JournalEntry[]): void {
+  if (!userId) return;
   try {
-    const sanitized = sanitizePayload(entries);
-    localStorage.setItem(ENTRIES_KEY, JSON.stringify(sanitized));
+    const userOnlyEntries = entries.filter((e) => e.userId === userId);
+    const sanitized = sanitizePayload(userOnlyEntries);
+    localStorage.setItem(getEntriesKey(userId), JSON.stringify(sanitized));
   } catch (err) {
     console.error("Error saving entries to localStorage:", err);
   }
 }
 
-export function upsertEntry(entry: JournalEntry): void {
-  const current = getStoredEntries();
+export function upsertEntry(userId: string, entry: JournalEntry): void {
+  if (!userId || entry.userId !== userId) return;
+
+  const current = getStoredEntries(userId);
   const index = current.findIndex((e) => e.id === entry.id);
   let updated: JournalEntry[];
 
   if (index >= 0) {
     updated = [...current];
-    updated[index] = { ...updated[index], ...entry, updatedAt: new Date().toISOString() };
+    updated[index] = { ...updated[index], ...entry, userId, updatedAt: new Date().toISOString() };
   } else {
-    updated = [entry, ...current];
+    updated = [{ ...entry, userId }, ...current];
   }
 
-  saveStoredEntries(updated);
+  saveStoredEntries(userId, updated);
 
-  // Synchronize to Firestore asynchronously if user is authenticated
-  if (entry.userId && auth.currentUser && auth.currentUser.uid === entry.userId) {
-    syncEntryToFirestore(entry.userId, index >= 0 ? updated[index] : entry).catch((e) => {
+  // Synchronize to Firestore if user is authenticated
+  if (auth.currentUser && auth.currentUser.uid === userId) {
+    const targetEntry = index >= 0 ? updated[index] : { ...entry, userId };
+    syncEntryToFirestore(userId, targetEntry).catch((e) => {
       console.warn("Firestore background sync notice:", e);
     });
   }
 }
 
-export function deleteEntry(entryId: string, userId?: string): void {
-  const current = getStoredEntries();
-  const updated = current.filter((e) => e.id !== entryId);
-  saveStoredEntries(updated);
+export function deleteEntry(userId: string, entryId: string): void {
+  if (!userId) return;
 
-  if (userId && auth.currentUser && auth.currentUser.uid === userId) {
+  const current = getStoredEntries(userId);
+  const updated = current.filter((e) => e.id !== entryId);
+  saveStoredEntries(userId, updated);
+
+  if (auth.currentUser && auth.currentUser.uid === userId) {
     deleteEntryFromFirestore(userId, entryId).catch((e) => {
       console.warn("Firestore delete notice:", e);
     });
   }
 }
 
+export function removeMoodTag(userId: string, entryId: string): JournalEntry | null {
+  if (!userId) return null;
+
+  const current = getStoredEntries(userId);
+  const entryIndex = current.findIndex((e) => e.id === entryId);
+  if (entryIndex === -1) return null;
+
+  const target = current[entryIndex];
+  const updated: JournalEntry = {
+    ...target,
+    mood: undefined,
+    userMoodOverride: undefined,
+    confidence: undefined,
+    updatedAt: new Date().toISOString(),
+  };
+
+  current[entryIndex] = updated;
+  saveStoredEntries(userId, current);
+
+  if (auth.currentUser && auth.currentUser.uid === userId) {
+    syncEntryToFirestore(userId, updated).catch((e) => {
+      console.warn("Firestore mood tag remove notice:", e);
+    });
+  }
+
+  return updated;
+}
+
+export function toggleExcludeFromDigest(
+  userId: string,
+  entryId: string,
+  isExcluded: boolean
+): JournalEntry | null {
+  if (!userId) return null;
+
+  const current = getStoredEntries(userId);
+  const entryIndex = current.findIndex((e) => e.id === entryId);
+  if (entryIndex === -1) return null;
+
+  const target = current[entryIndex];
+  const updated: JournalEntry = {
+    ...target,
+    isExcludedFromDigest: isExcluded,
+    updatedAt: new Date().toISOString(),
+  };
+
+  current[entryIndex] = updated;
+  saveStoredEntries(userId, current);
+
+  if (auth.currentUser && auth.currentUser.uid === userId) {
+    syncEntryToFirestore(userId, updated).catch((e) => {
+      console.warn("Firestore exclude toggle notice:", e);
+    });
+  }
+
+  return updated;
+}
+
 // ----------------------------------------------------------------------------
-// Mood Calibration Memory
+// User-Isolated Mood Calibration Memory
 // ----------------------------------------------------------------------------
 
-export function getStoredCorrections(): MoodCorrection[] {
+export function getStoredCorrections(userId: string): MoodCorrection[] {
+  if (!userId) return [];
   try {
-    const raw = localStorage.getItem(CORRECTIONS_KEY);
+    const raw = localStorage.getItem(getCorrectionsKey(userId));
     if (!raw) return [];
-    return JSON.parse(raw);
+    const parsed: MoodCorrection[] = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((c) => c.userId === userId) : [];
   } catch {
     return [];
   }
 }
 
-export function saveCorrection(correction: Omit<MoodCorrection, "id" | "createdAt">): MoodCorrection {
-  const current = getStoredCorrections();
+export function saveCorrection(userId: string, correction: Omit<MoodCorrection, "id" | "createdAt" | "userId">): MoodCorrection {
+  const current = getStoredCorrections(userId);
   const newRecord: MoodCorrection = {
     id: `corr_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-    userId: correction.userId,
+    userId,
     entryId: correction.entryId,
     originalMood: correction.originalMood,
     correctedMood: correction.correctedMood,
@@ -190,72 +277,100 @@ export function saveCorrection(correction: Omit<MoodCorrection, "id" | "createdA
   };
 
   const updated = [newRecord, ...current].slice(0, 10); // Keep last 10 for few-shot context
-  localStorage.setItem(CORRECTIONS_KEY, JSON.stringify(sanitizePayload(updated)));
+  if (userId) {
+    localStorage.setItem(getCorrectionsKey(userId), JSON.stringify(sanitizePayload(updated)));
+    if (auth.currentUser && auth.currentUser.uid === userId) {
+      syncCorrectionToFirestore(userId, newRecord).catch(() => {});
+    }
+  }
   return newRecord;
 }
 
 // ----------------------------------------------------------------------------
-// User Settings & Stats
+// User-Isolated Settings & Stats
 // ----------------------------------------------------------------------------
 
-export function getStoredSettings(userId = "user_default"): UserSettings {
-  try {
-    const raw = localStorage.getItem(SETTINGS_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch {
-    // fallback below
-  }
-
-  return {
-    userId,
+export function getStoredSettings(userId: string): UserSettings {
+  const defaultSettings: UserSettings = {
+    userId: userId || "",
     petName: "Lumi",
     enablePhotoAnalysis: true,
     enableWeeklyPatterns: true,
-    streakDays: 3,
-    completedActionsCount: 4,
+    streakDays: 0,
+    completedActionsCount: 0,
     updatedAt: new Date().toISOString(),
   };
-}
 
-export function saveStoredSettings(settings: UserSettings): void {
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify(sanitizePayload(settings)));
-}
+  if (!userId) return defaultSettings;
 
-// ----------------------------------------------------------------------------
-// Cached Weekly Insights
-// ----------------------------------------------------------------------------
-
-export function getCachedInsights(): WeeklyInsightResult | null {
   try {
-    const raw = localStorage.getItem(INSIGHTS_KEY);
+    const raw = localStorage.getItem(getSettingsKey(userId));
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return { ...defaultSettings, ...parsed, userId };
+    }
+  } catch {
+    // fallback
+  }
+
+  return defaultSettings;
+}
+
+export function saveStoredSettings(userId: string, settings: UserSettings): void {
+  if (!userId) return;
+  const sanitized = sanitizePayload({ ...settings, userId });
+  localStorage.setItem(getSettingsKey(userId), JSON.stringify(sanitized));
+
+  if (auth.currentUser && auth.currentUser.uid === userId) {
+    syncSettingsToFirestore(userId, sanitized).catch((e) => {
+      console.warn("Firestore settings sync notice:", e);
+    });
+  }
+}
+
+// ----------------------------------------------------------------------------
+// User-Isolated Cached Weekly Insights
+// ----------------------------------------------------------------------------
+
+export function getCachedInsights(userId: string): WeeklyInsightResult | null {
+  if (!userId) return null;
+  try {
+    const raw = localStorage.getItem(getInsightsKey(userId));
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
   }
 }
 
-export function setCachedInsights(insight: WeeklyInsightResult): void {
-  localStorage.setItem(INSIGHTS_KEY, JSON.stringify(sanitizePayload(insight)));
+export function setCachedInsights(userId: string, insight: WeeklyInsightResult): void {
+  if (!userId) return;
+  localStorage.setItem(getInsightsKey(userId), JSON.stringify(sanitizePayload(insight)));
 }
 
 // ----------------------------------------------------------------------------
-// Data Export & Full Wipe
+// Data Export & User Data Wipe
 // ----------------------------------------------------------------------------
 
-export function exportAllUserData(): string {
+export function exportAllUserData(userId: string): string {
   const data = {
+    userId,
     exportedAt: new Date().toISOString(),
-    userSettings: getStoredSettings(),
-    entries: getStoredEntries(),
-    corrections: getStoredCorrections(),
+    userSettings: getStoredSettings(userId),
+    entries: getStoredEntries(userId),
+    corrections: getStoredCorrections(userId),
     privacyNotice: "Aurora exports contain strictly your own private entries and metadata.",
   };
   return JSON.stringify(data, null, 2);
 }
 
-export function exportMarkdownJournal(): string {
-  const entries = getStoredEntries();
-  let md = `# Aurora Private Journal Export\nExported: ${new Date().toLocaleDateString()}\n\n---\n\n`;
+export function exportMarkdownJournal(userId: string): string {
+  const entries = getStoredEntries(userId);
+  let md = `# Aurora Private Journal Export\nUserId: ${userId}\nExported: ${new Date().toLocaleDateString()}\n\n---\n\n`;
+
+  if (entries.length === 0) {
+    md += `*No journal entries recorded for this account.*\n`;
+    return md;
+  }
 
   entries.forEach((e) => {
     md += `## Reflection — ${new Date(e.createdAt).toLocaleString()}\n`;
@@ -275,120 +390,47 @@ export function exportMarkdownJournal(): string {
   return md;
 }
 
-export function wipeAllUserData(): void {
-  localStorage.removeItem(ENTRIES_KEY);
-  localStorage.removeItem(CORRECTIONS_KEY);
-  localStorage.removeItem(SETTINGS_KEY);
-  localStorage.removeItem(INSIGHTS_KEY);
+export function wipeAllUserData(userId?: string): void {
+  if (userId) {
+    localStorage.removeItem(getEntriesKey(userId));
+    localStorage.removeItem(getCorrectionsKey(userId));
+    localStorage.removeItem(getSettingsKey(userId));
+    localStorage.removeItem(getInsightsKey(userId));
+  }
+  // Clear any legacy shared keys if they exist in browser
+  localStorage.removeItem("aurora_journal_entries_v1");
+  localStorage.removeItem("aurora_mood_corrections_v1");
+  localStorage.removeItem("aurora_user_settings_v1");
+  localStorage.removeItem("aurora_cached_insights_v1");
 }
 
-// ----------------------------------------------------------------------------
-// Realistic Demo Seed Data
-// ----------------------------------------------------------------------------
+export async function permanentlyDeleteUserAccountAndData(userId: string): Promise<void> {
+  // 1. Wipe local persistence for this user
+  wipeAllUserData(userId);
 
-function getSeedEntries(): JournalEntry[] {
-  const now = Date.now();
-  const day = 24 * 60 * 60 * 1000;
+  // 2. If authenticated in Firebase, attempt Firestore document cleanup
+  if (auth.currentUser && auth.currentUser.uid === userId) {
+    try {
+      const entriesRef = collection(db, "users", userId, "entries");
+      const snap = await getDocs(entriesRef);
+      const deletePromises = snap.docs.map((docSnap) => deleteDoc(docSnap.ref));
+      await Promise.all(deletePromises);
 
-  return [
-    {
-      id: "seed_01",
-      userId: "user_default",
-      content:
-        "Just wrapped up the first sprint demo of our capstone project. My code ran without bugs, but when questions started coming from the review panel, I froze up and felt imposter syndrome creeping in. Everyone else seemed so articulate.",
-      hasImage: false,
-      source: "text",
-      mood: "Anxious",
-      confidence: 0.88,
-      topics: ["Capstone Demo", "Imposter Syndrome", "Public Speaking"],
-      concern_flag: false,
-      emotional_valence: "challenging",
-      intensity: "moderate",
-      reflection:
-        "Presenting technical work under immediate questioning is a distinct skill from building the code itself. Your demo succeeded because of your preparation; momentary hesitation during spontaneous Q&A does not diminish your technical capability.",
-      action: {
-        action: "Jot down the top 3 questions asked today and draft a 2-sentence bullet for each while fresh",
-        reason: "Documenting answers now turns surprising questions into familiar territory for next time.",
-        effort: "15 minutes",
-        category: "planning",
-        requires_confirmation: true,
-      },
-      actionStatus: "accepted",
-      status: "analyzed",
-      createdAt: new Date(now - 2 * day).toISOString(),
-      updatedAt: new Date(now - 2 * day).toISOString(),
-      evidenceSummary: {
-        wordCount: 42,
-        keyThemes: ["Capstone Demo", "Imposter Syndrome"],
-        confidenceLabel: "high",
-        correctedByUser: false,
-      },
-    },
-    {
-      id: "seed_02",
-      userId: "user_default",
-      content:
-        "Took an early morning walk through the park before starting study hours. The air was crisp, and for the first time in two weeks my mind felt spacious and quiet. Grateful for the change of pace.",
-      hasImage: false,
-      source: "voice",
-      mood: "Peaceful",
-      confidence: 0.92,
-      topics: ["Morning Walk", "Mental Space", "Gratitude"],
-      concern_flag: false,
-      emotional_valence: "positive",
-      intensity: "low",
-      reflection:
-        "Creating deliberate stillness before the rush of commitments grounds your entire day. Savoring this quiet clarity reinforces how vital gentle pauses are for your focus.",
-      action: {
-        action: "Set a recurring calendar block for an 8:00 AM outdoor pause tomorrow",
-        reason: "Protects morning breathing room before digital notifications take over.",
-        effort: "5 minutes",
-        category: "organization",
-        requires_confirmation: true,
-      },
-      actionStatus: "completed",
-      status: "analyzed",
-      createdAt: new Date(now - 1 * day).toISOString(),
-      updatedAt: new Date(now - 1 * day).toISOString(),
-      evidenceSummary: {
-        wordCount: 38,
-        keyThemes: ["Morning Walk", "Mental Space"],
-        confidenceLabel: "high",
-        correctedByUser: false,
-      },
-    },
-    {
-      id: "seed_03",
-      userId: "user_default",
-      content:
-        "Had a difficult conversation with my project partner about dividing up the remaining test coverage. It felt awkward at first, but we set honest boundaries and agreed on a clean split.",
-      hasImage: false,
-      source: "text",
-      mood: "Relieved",
-      confidence: 0.84,
-      topics: ["Team Boundaries", "Test Coverage", "Communication"],
-      concern_flag: false,
-      emotional_valence: "positive",
-      intensity: "moderate",
-      reflection:
-        "Navigating uncomfortable communication directly takes courage and maturity. Reaching an authentic alignment now prevents accumulated friction later in the semester.",
-      action: {
-        action: "Post the agreed test file ownership list in our shared repo issues",
-        reason: "Solidifies mutual understanding and prevents duplicate effort.",
-        effort: "5 minutes",
-        category: "communication",
-        requires_confirmation: true,
-      },
-      actionStatus: "completed",
-      status: "analyzed",
-      createdAt: new Date(now - 6 * 3600 * 1000).toISOString(),
-      updatedAt: new Date(now - 6 * 3600 * 1000).toISOString(),
-      evidenceSummary: {
-        wordCount: 34,
-        keyThemes: ["Team Boundaries", "Communication"],
-        confidenceLabel: "high",
-        correctedByUser: false,
-      },
-    },
-  ];
+      // Delete settings and corrections
+      await deleteDoc(doc(db, "users", userId, "settings", "preferences")).catch(() => {});
+      
+      const corrRef = collection(db, "users", userId, "corrections");
+      const corrSnap = await getDocs(corrRef);
+      await Promise.all(corrSnap.docs.map((d) => deleteDoc(d.ref)));
+    } catch (err) {
+      console.warn("Firestore cloud wipe error or partial cleanup:", err);
+    }
+
+    try {
+      // Sign out
+      await auth.signOut();
+    } catch {
+      // Ignored
+    }
+  }
 }

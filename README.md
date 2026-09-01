@@ -70,20 +70,28 @@ service cloud.firestore {
 
 ## 🧪 Automated Security Rules Verification
 
-Aurora includes an automated test runner for Firestore security rules. Execute the suite via the browser under the **Security** tab, or run programmatically:
+Aurora includes automated test suites for Firestore security rules using the **Firebase Rules Unit Testing library** (`@firebase/rules-unit-testing`) to execute against the local emulator, as well as an in-browser live verification engine.
+
+### Run with a Single Command (Local Emulator)
 
 ```bash
-# Run the built-in security invariants test suite
-curl http://localhost:3000/api/rules-test
+# Execute the automated security test suite against the local Firestore emulator
+firebase emulators:exec --only firestore "npm test"
+
+# Or run directly if the emulator is already active:
+npm test
 ```
 
-### Verified Invariants
-1. `[PASS]` Authenticated user reading own private entries (`/users/user_123/entries/e1`)
-2. `[PASS]` Cross-user read prevention (`user_123` attempting to read `/users/user_456/entries/e2`)
-3. `[PASS]` Unauthenticated request blocked from writing entries
-4. `[PASS]` Non-admin blocked from internal aggregate collections
-5. `[PASS]` User can save mood correction to personal calibration subcollection
-6. `[PASS]` Temporal integrity & size limit verification
+### Verified Test Cases (`firestore.rules.test.js`):
+1. **Authenticated Owner Access**: An authenticated user can successfully read and write their own entry document (`/users/{userId}/entries/{entryId}`).
+2. **Cross-User Isolation**: An authenticated user cannot read or overwrite another user's private entry documents.
+3. **Unauthenticated Access Rejection**: Unauthenticated requests are rejected outright from reading or writing user records.
+4. **Admin Protection**: Standard authenticated users lacking elevated administrative custom claims cannot access the internal aggregate collections (`/admin_aggregates/{docId}`).
+
+You can also run the in-browser verification suite via the **Security** tab, or call the endpoint programmatically:
+```bash
+curl http://localhost:3000/api/rules-test
+```
 
 ---
 

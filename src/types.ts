@@ -13,7 +13,7 @@ export type ActionEffort = '5 minutes' | '15 minutes' | '30 minutes' | 'longer';
 
 export type ActionStatus = 'pending' | 'accepted' | 'completed' | 'dismissed' | 'none';
 
-export type EntryStatus = 'saved' | 'analyzing' | 'analyzed' | 'failed';
+export type EntryStatus = 'saved' | 'analyzing' | 'analyzed' | 'unavailable' | 'failed';
 
 export interface ActionItem {
   action: string;
@@ -45,6 +45,7 @@ export interface ReflectionResult {
 
 export interface JournalEntry {
   id: string;
+  idempotencyKey?: string;
   userId: string;
   content: string;
   imageUrl?: string;
@@ -61,7 +62,10 @@ export interface JournalEntry {
   actionStatus: ActionStatus;
   userMoodOverride?: string;
   isExcludedFromDigest?: boolean;
+  editedByUser?: boolean;
   status: EntryStatus;
+  analysisStatus?: 'pending' | 'available' | 'unavailable';
+  reflectionStatus?: 'available' | 'unavailable';
   createdAt: string;
   updatedAt: string;
   evidenceSummary?: {
@@ -101,13 +105,25 @@ export interface PetState {
   level: number;
 }
 
+export interface PatternEvidenceDetail {
+  entriesCount: number;
+  dateRange: string;
+  repeatedTopics: string[];
+  confidence: 'high' | 'medium' | 'low';
+  userConfirmedCorrectionsUsed: boolean;
+  explanationSummary: string;
+  supportingEntryDates?: string[];
+}
+
 export interface WeeklyPatternItem {
   theme: string;
   frequency: number;
   entriesCount: number;
   dateRange: string;
   observation: string;
-  supportingEntryIds: string[];
+  supportingEntryIds?: string[];
+  evidenceCitation?: string;
+  evidenceDetails?: PatternEvidenceDetail;
 }
 
 export interface WeeklyInsightResult {
@@ -117,6 +133,9 @@ export interface WeeklyInsightResult {
   patterns: WeeklyPatternItem[];
   encouragement: string;
   evidenceDisclaimer: string;
+  overview?: string;
+  timeframe?: string;
+  forwardSuggestion?: string;
 }
 
 export interface CrisisResource {
