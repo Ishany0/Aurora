@@ -63,7 +63,7 @@ export const SecurityPanel: React.FC<SecurityPanelProps> = ({
   };
 
   const handleExportJSON = () => {
-    const jsonStr = exportAllUserData();
+    const jsonStr = exportAllUserData(userId);
     const blob = new Blob([jsonStr], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -76,7 +76,7 @@ export const SecurityPanel: React.FC<SecurityPanelProps> = ({
   };
 
   const handleExportMarkdown = () => {
-    const mdStr = exportMarkdownJournal();
+    const mdStr = exportMarkdownJournal(userId);
     const blob = new Blob([mdStr], { type: "text/markdown" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -91,20 +91,22 @@ export const SecurityPanel: React.FC<SecurityPanelProps> = ({
   const handleTogglePhoto = () => {
     const updated: UserSettings = {
       ...settings,
+      userId,
       enablePhotoAnalysis: !settings.enablePhotoAnalysis,
       updatedAt: new Date().toISOString(),
     };
-    saveStoredSettings(updated);
+    saveStoredSettings(userId, updated);
     onSettingsChange(updated);
   };
 
   const handleTogglePatterns = () => {
     const updated: UserSettings = {
       ...settings,
+      userId,
       enableWeeklyPatterns: !settings.enableWeeklyPatterns,
       updatedAt: new Date().toISOString(),
     };
-    saveStoredSettings(updated);
+    saveStoredSettings(userId, updated);
     onSettingsChange(updated);
   };
 

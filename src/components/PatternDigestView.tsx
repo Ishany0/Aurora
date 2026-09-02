@@ -23,9 +23,14 @@ interface PatternDigestViewProps {
 }
 
 export const PatternDigestView: React.FC<PatternDigestViewProps> = ({ entries, userId }) => {
-  const [insights, setInsights] = useState<WeeklyInsightResult | null>(getCachedInsights());
+  const [insights, setInsights] = useState<WeeklyInsightResult | null>(() => getCachedInsights(userId));
   const [isSynthesizing, setIsSynthesizing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Sync cached insights whenever userId changes
+  React.useEffect(() => {
+    setInsights(getCachedInsights(userId));
+  }, [userId]);
 
   // Explainability Modal State
   const [selectedExplainItem, setSelectedExplainItem] = useState<{
@@ -81,7 +86,7 @@ export const PatternDigestView: React.FC<PatternDigestViewProps> = ({ entries, u
       const data = await res.json();
       const result: WeeklyInsightResult = data.insightResult;
       setInsights(result);
-      setCachedInsights(result);
+      setCachedInsights(userId, result);
     } catch (err: any) {
       console.error("Failed to generate insight digest:", err);
       setErrorMessage("Could not synthesize insight patterns at this moment.");

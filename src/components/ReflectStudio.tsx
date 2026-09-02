@@ -191,9 +191,10 @@ export const ReflectStudio: React.FC<ReflectStudioProps> = ({
 
     const initialEntry: JournalEntry = {
       id: entryId,
-      idempotencyKey,
+      ownerId: userId,
       userId,
       content: content.trim(),
+      rawText: content.trim(),
       imageUrl: persistentImageUrl,
       hasImage: Boolean(imagePreview),
       source: isRecording ? "voice" : imagePreview ? "multimodal" : "text",

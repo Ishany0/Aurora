@@ -88,7 +88,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
 
   const handleDelete = (id: string) => {
     if (window.confirm("Are you sure you want to permanently delete this private reflection? This cannot be undone.")) {
-      deleteEntry(id, userId);
+      deleteEntry(userId, id);
       onEntriesChange(entries.filter((e) => e.id !== id));
       showFeedback("Reflection permanently deleted.");
     }
@@ -106,11 +106,12 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
     // and flag editedByUser = true.
     const updated: JournalEntry = {
       ...entry,
+      userId,
       content: editContent.trim(),
       editedByUser: true,
       updatedAt: new Date().toISOString(),
     };
-    upsertEntry(updated);
+    upsertEntry(userId, updated);
     onEntriesChange(entries.map((e) => (e.id === entry.id ? updated : e)));
     setEditingEntryId(null);
     showFeedback("Edited reflection saved directly. Content preserved as written without silent reinterpretation.");
@@ -121,8 +122,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
     const original = entry.mood || "Reflective";
     const corrected = correctedMoodInput.trim();
 
-    saveCorrection({
-      userId,
+    saveCorrection(userId, {
       entryId: entry.id,
       originalMood: original,
       correctedMood: corrected,
@@ -130,11 +130,12 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
 
     const updated: JournalEntry = {
       ...entry,
+      userId,
       userMoodOverride: corrected,
       updatedAt: new Date().toISOString(),
     };
 
-    upsertEntry(updated);
+    upsertEntry(userId, updated);
     onEntriesChange(entries.map((e) => (e.id === entry.id ? updated : e)));
     setCorrectingEntryId(null);
     setCorrectedMoodInput("");
@@ -142,7 +143,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
   };
 
   const handleRemoveMoodTag = (entry: JournalEntry) => {
-    const updated = removeMoodTag(entry.id, userId);
+    const updated = removeMoodTag(userId, entry.id);
     if (updated) {
       onEntriesChange(entries.map((e) => (e.id === entry.id ? updated : e)));
       setCorrectingEntryId(null);
@@ -152,7 +153,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
 
   const handleToggleDigestExclusion = (entry: JournalEntry) => {
     const nextVal = !entry.isExcludedFromDigest;
-    const updated = toggleExcludeFromDigest(entry.id, nextVal, userId);
+    const updated = toggleExcludeFromDigest(userId, entry.id, nextVal);
     if (updated) {
       onEntriesChange(entries.map((e) => (e.id === entry.id ? updated : e)));
       showFeedback(
@@ -166,10 +167,11 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
   const handleActionToggle = (entry: JournalEntry, newStatus: ActionStatus) => {
     const updated: JournalEntry = {
       ...entry,
+      userId,
       actionStatus: newStatus,
       updatedAt: new Date().toISOString(),
     };
-    upsertEntry(updated);
+    upsertEntry(userId, updated);
     onEntriesChange(entries.map((e) => (e.id === entry.id ? updated : e)));
     if (newStatus === "dismissed") {
       showFeedback("Action recommendation dismissed.");
@@ -179,7 +181,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
   };
 
   const handleExportJSON = () => {
-    const jsonStr = exportAllUserData();
+    const jsonStr = exportAllUserData(userId);
     const blob = new Blob([jsonStr], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -191,7 +193,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
   };
 
   const handleExportMarkdown = () => {
-    const mdStr = exportMarkdownJournal();
+    const mdStr = exportMarkdownJournal(userId);
     const blob = new Blob([mdStr], { type: "text/markdown" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");

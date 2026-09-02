@@ -7,59 +7,43 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // Helper Functions
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-
-    function isValidId(id) {
-      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
-    }
-
-    function incoming() {
-      return request.resource.data;
-    }
-
-    function existing() {
-      return resource.data;
-    }
-
-    // User root document & subcollections
+    // User root document & owner-isolated subcollections
     match /users/{userId} {
-      allow read, write: if isOwner(userId);
+      allow read, create, update, delete: if request.auth != null
+        && request.auth.uid == userId;
 
-      // Private journal entries with strict owner boundary
+      // User private journal entries
       match /entries/{entryId} {
-        allow get, list: if isOwner(userId);
-        
-        allow create: if isOwner(userId)
-          && isValidId(entryId)
-          && incoming().userId == request.auth.uid
-          && incoming().content is string
-          && incoming().content.size() <= 20000;
-
-        allow update: if isOwner(userId)
-          && incoming().userId == existing().userId;
-
-        allow delete: if isOwner(userId);
+        allow read, create, update, delete: if request.auth != null
+          && request.auth.uid == userId;
       }
 
-      // Mood tag corrections subcollection for calibration
+      // Mood tag corrections subcollection
       match /corrections/{correctionId} {
-        allow read, write: if isOwner(userId) && isValidId(correctionId);
+        allow read, create, update, delete: if request.auth != null
+          && request.auth.uid == userId;
       }
 
-      // User settings and companion state
+      // Next-step action items subcollection
+      match /actions/{actionId} {
+        allow read, create, update, delete: if request.auth != null
+          && request.auth.uid == userId;
+      }
+
+      // Weekly pattern & insight digest subcollection
+      match /insights/{insightId} {
+        allow read, create, update, delete: if request.auth != null
+          && request.auth.uid == userId;
+      }
+
+      // User settings & companion configuration
       match /settings/{settingId} {
-        allow read, write: if isOwner(userId) && isValidId(settingId);
+        allow read, create, update, delete: if request.auth != null
+          && request.auth.uid == userId;
       }
     }
 
-    // Admin aggregate path: strictly denied to standard users
+    // Admin aggregate path: strictly denied to standard clients
     match /admin_aggregates/{docId} {
       allow read, write: if false;
     }

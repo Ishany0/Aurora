@@ -40,10 +40,28 @@ function getInsightsKey(userId: string): string {
 // ----------------------------------------------------------------------------
 
 export async function syncEntryToFirestore(userId: string, entry: JournalEntry): Promise<void> {
-  if (!auth.currentUser || auth.currentUser.uid !== userId || entry.userId !== userId) return;
+  const currentUid = auth.currentUser?.uid;
+  if (!currentUid || currentUid !== userId) {
+    console.error("Privacy validation error: Authenticated UID does not match operation target.");
+    return;
+  }
+
+  // Ensure ownerId is bound to current authenticated UID
+  const payloadEntry: JournalEntry = {
+    ...entry,
+    ownerId: userId,
+    userId: userId,
+    rawText: entry.rawText || entry.content,
+  };
+
+  if (payloadEntry.ownerId !== userId || payloadEntry.userId !== userId) {
+    console.error("Privacy validation error: Entry ownership mismatch before writing.");
+    return;
+  }
+
   const path = `users/${userId}/entries/${entry.id}`;
   try {
-    const cleanData = sanitizePayload(entry);
+    const cleanData = sanitizePayload(payloadEntry);
     await setDoc(doc(db, "users", userId, "entries", entry.id), cleanData);
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
@@ -51,7 +69,11 @@ export async function syncEntryToFirestore(userId: string, entry: JournalEntry):
 }
 
 export async function deleteEntryFromFirestore(userId: string, entryId: string): Promise<void> {
-  if (!auth.currentUser || auth.currentUser.uid !== userId) return;
+  const currentUid = auth.currentUser?.uid;
+  if (!currentUid || currentUid !== userId) {
+    console.error("Privacy validation error: Authenticated UID does not match operation target.");
+    return;
+  }
   const path = `users/${userId}/entries/${entryId}`;
   try {
     await deleteDoc(doc(db, "users", userId, "entries", entryId));
@@ -65,7 +87,8 @@ export function subscribeToUserEntries(
   onEntriesReceived: (entries: JournalEntry[]) => void,
   onError?: (err: unknown) => void
 ): () => void {
-  if (!auth.currentUser || auth.currentUser.uid !== userId || !userId) {
+  const currentUid = auth.currentUser?.uid;
+  if (!currentUid || currentUid !== userId || !userId) {
     onEntriesReceived([]);
     return () => {};
   }
@@ -81,8 +104,15 @@ export function subscribeToUserEntries(
         snapshot.forEach((docSnap) => {
           const data = docSnap.data() as JournalEntry;
           // Validate ownership before storing or rendering
-          if (data && data.userId === userId) {
-            cloudEntries.push(data);
+          const entryOwner = data.ownerId || data.userId;
+          if (data && entryOwner === userId) {
+            cloudEntries.push({
+              ...data,
+              ownerId: userId,
+              userId: userId,
+            });
+          } else {
+            console.error("Privacy error: Loaded document failed ownership validation. Omitted from render.");
           }
         });
 
@@ -153,24 +183,31 @@ export function saveStoredEntries(userId: string, entries: JournalEntry[]): void
 }
 
 export function upsertEntry(userId: string, entry: JournalEntry): void {
-  if (!userId || entry.userId !== userId) return;
+  if (!userId) return;
+
+  const safeEntry: JournalEntry = {
+    ...entry,
+    ownerId: userId,
+    userId: userId,
+    rawText: entry.rawText || entry.content,
+  };
 
   const current = getStoredEntries(userId);
-  const index = current.findIndex((e) => e.id === entry.id);
+  const index = current.findIndex((e) => e.id === safeEntry.id);
   let updated: JournalEntry[];
 
   if (index >= 0) {
     updated = [...current];
-    updated[index] = { ...updated[index], ...entry, userId, updatedAt: new Date().toISOString() };
+    updated[index] = { ...updated[index], ...safeEntry, updatedAt: new Date().toISOString() };
   } else {
-    updated = [{ ...entry, userId }, ...current];
+    updated = [safeEntry, ...current];
   }
 
   saveStoredEntries(userId, updated);
 
   // Synchronize to Firestore if user is authenticated
   if (auth.currentUser && auth.currentUser.uid === userId) {
-    const targetEntry = index >= 0 ? updated[index] : { ...entry, userId };
+    const targetEntry = index >= 0 ? updated[index] : safeEntry;
     syncEntryToFirestore(userId, targetEntry).catch((e) => {
       console.warn("Firestore background sync notice:", e);
     });

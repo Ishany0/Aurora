@@ -45,9 +45,10 @@ export interface ReflectionResult {
 
 export interface JournalEntry {
   id: string;
-  idempotencyKey?: string;
+  ownerId: string;
   userId: string;
   content: string;
+  rawText?: string;
   imageUrl?: string;
   hasImage: boolean;
   source: InputModality;

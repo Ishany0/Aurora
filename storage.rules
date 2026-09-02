@@ -1,0 +1,14 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Default deny
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+
+    // Owner-isolated user uploads: /users/{userId}/uploads/**
+    match /users/{userId}/uploads/{allPaths=**} {
+      allow read, write, delete: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}

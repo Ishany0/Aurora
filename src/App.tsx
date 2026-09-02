@@ -7,6 +7,7 @@ import { PatternDigestView } from "./components/PatternDigestView.js";
 import { CompanionView } from "./components/CompanionView.js";
 import { SecurityPanel } from "./components/SecurityPanel.js";
 import { SupportModal } from "./components/SupportModal.js";
+import { SecureLoadingScreen } from "./components/SecureLoadingScreen.js";
 import {
   getStoredEntries,
   getStoredSettings,
@@ -21,99 +22,161 @@ import type { JournalEntry, UserSettings, MoodCorrection } from "./types.js";
 import { Shield } from "lucide-react";
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<"landing" | "reflect" | "timeline" | "patterns" | "companion" | "security">("landing");
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  
-  const userEmail = currentUser?.email || "alex.reflections@gmail.com";
-  const userId = currentUser?.uid || "user_alex_prod";
-  const isFirebaseUser = currentUser !== null;
+  const [authLoading, setAuthLoading] = useState<boolean>(true);
+  const [activeTab, setActiveTab] = useState<"reflect" | "timeline" | "patterns" | "companion" | "security">("reflect");
   
   const [entries, setEntries] = useState<JournalEntry[]>([]);
-  const [settings, setSettings] = useState<UserSettings>(getStoredSettings(userId));
+  const [settings, setSettings] = useState<UserSettings>(() => getStoredSettings(currentUser?.uid || ""));
   const [corrections, setCorrections] = useState<MoodCorrection[]>([]);
   const [isSupportOpen, setIsSupportOpen] = useState(false);
 
-  // Monitor Firebase Auth state
+  // Central Firebase Authentication listener
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setCurrentUser(user);
+      setCurrentUser(user ?? null);
+      setAuthLoading(false);
     });
+
     return () => unsubscribe();
   }, []);
 
-  // Load initial data and subscribe to Firestore when authenticated
+  // Sync isolated user state whenever currentUser changes
   useEffect(() => {
-    setEntries(getStoredEntries());
-    setSettings(getStoredSettings(userId));
-    setCorrections(getStoredCorrections());
-
-    // If authenticated with Firebase, listen for real-time Firestore updates
-    if (currentUser) {
-      const unsubscribeEntries = subscribeToUserEntries(currentUser.uid, (cloudEntries) => {
-        setEntries(cloudEntries);
-      });
-      return () => unsubscribeEntries();
+    // If signed out, immediately wipe in-memory state to prevent data leakage between accounts
+    if (!currentUser) {
+      setEntries([]);
+      setCorrections([]);
+      setSettings(getStoredSettings(""));
+      return;
     }
-  }, [userId, currentUser]);
+
+    const uid = currentUser.uid;
+
+    // Load initial local-scoped data for this specific user
+    setEntries(getStoredEntries(uid));
+    setSettings(getStoredSettings(uid));
+    setCorrections(getStoredCorrections(uid));
+
+    // Subscribe to Firestore entries under /users/{uid}/entries in real-time
+    const unsubscribeEntries = subscribeToUserEntries(
+      uid,
+      (cloudEntries) => {
+        // Validate ownership before rendering
+        const userOnly = cloudEntries.filter((entry) => entry.userId === uid);
+        setEntries(userOnly);
+      },
+      (err) => {
+        console.warn("Firestore subscription notice:", err);
+      }
+    );
+
+    return () => {
+      unsubscribeEntries();
+    };
+  }, [currentUser]);
 
   const handleSignIn = async () => {
     try {
       await signInWithPopup(auth, googleProvider);
     } catch (err) {
-      console.warn("Sign in popup cancelled or encountered error:", err);
+      console.warn("Sign in popup encountered an error or was closed:", err);
     }
   };
 
   const handleSignOut = async () => {
     try {
+      // 1. Immediately wipe user state from React memory before sign-out completes
+      setEntries([]);
+      setCorrections([]);
+      setSettings(getStoredSettings(""));
+      setActiveTab("reflect");
+      // 2. Call Firebase Auth signOut
       await signOut(auth);
-      setCurrentUser(null);
     } catch (err) {
       console.error("Sign out error:", err);
     }
   };
 
   const handleEntrySaved = (savedEntry: JournalEntry) => {
-    setEntries(getStoredEntries());
-    setCorrections(getStoredCorrections());
+    if (!currentUser) return;
+    const uid = currentUser.uid;
+
+    // Refresh scoped local entries
+    setEntries(getStoredEntries(uid));
+    setCorrections(getStoredCorrections(uid));
 
     // Update streak if needed
     const updatedSettings: UserSettings = {
       ...settings,
+      userId: uid,
       streakDays: Math.min(settings.streakDays + 1, 30),
       updatedAt: new Date().toISOString(),
     };
     setSettings(updatedSettings);
-    saveStoredSettings(updatedSettings);
-    syncSettingsToFirestore(userId, updatedSettings).catch(() => {});
+    saveStoredSettings(uid, updatedSettings);
+    syncSettingsToFirestore(uid, updatedSettings).catch(() => {});
   };
 
   const handleRenamePet = (newName: string) => {
+    if (!currentUser) return;
+    const uid = currentUser.uid;
+
     const updated: UserSettings = {
       ...settings,
+      userId: uid,
       petName: newName,
       updatedAt: new Date().toISOString(),
     };
     setSettings(updated);
-    saveStoredSettings(updated);
-    syncSettingsToFirestore(userId, updated).catch(() => {});
+    saveStoredSettings(uid, updated);
+    syncSettingsToFirestore(uid, updated).catch(() => {});
   };
 
   const handleDataWiped = () => {
+    if (!currentUser) return;
+    const uid = currentUser.uid;
     setEntries([]);
     setCorrections([]);
-    const resetSettings = getStoredSettings(userId);
+    const resetSettings = getStoredSettings(uid);
     setSettings(resetSettings);
     setActiveTab("reflect");
   };
 
+  // State 1: Firebase Auth is initializing
+  if (authLoading) {
+    return <SecureLoadingScreen message="Loading Aurora securely..." />;
+  }
+
+  // State 2: Unauthenticated visitor
+  // Render ONLY the public Sign-In Landing screen.
+  // Private dashboard, history, reflection studio, and queries are NEVER rendered or executed.
+  if (!currentUser) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+        <LandingView
+          onSignIn={handleSignIn}
+          onOpenSupport={() => setIsSupportOpen(true)}
+        />
+        <SupportModal
+          isOpen={isSupportOpen}
+          onClose={() => setIsSupportOpen(false)}
+        />
+      </div>
+    );
+  }
+
+  // State 3: Authenticated User
+  // Render ONLY the private application shell scoped to currentUser.uid.
+  const userId = currentUser.uid;
+  const userEmail = currentUser.email || "";
   const latestMood = entries.length > 0 ? (entries[0].userMoodOverride || entries[0].mood || "Calm") : "Calm";
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-teal-500 selection:text-slate-950 font-sans">
       
       {/* Background Subtle Gradient Blobs */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0" aria-hidden="true">
         <div className="absolute -top-40 -left-40 w-96 h-96 bg-indigo-900/15 rounded-full blur-3xl" />
         <div className="absolute top-1/3 -right-40 w-96 h-96 bg-teal-900/15 rounded-full blur-3xl" />
         <div className="absolute -bottom-40 left-1/3 w-96 h-96 bg-purple-900/10 rounded-full blur-3xl" />
@@ -124,23 +187,13 @@ export default function App() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         userEmail={userEmail}
-        isFirebaseUser={isFirebaseUser}
         settings={settings}
         onOpenSupport={() => setIsSupportOpen(true)}
-        onSignIn={handleSignIn}
         onSignOut={handleSignOut}
       />
 
-      {/* Main View Container */}
+      {/* Main Authenticated View Container */}
       <main className="flex-1 relative z-10">
-        {activeTab === "landing" && (
-          <LandingView
-            onSignIn={handleSignIn}
-            onContinueAsGuest={() => setActiveTab("reflect")}
-            onOpenSupport={() => setIsSupportOpen(true)}
-          />
-        )}
-
         {activeTab === "reflect" && (
           <ReflectStudio
             userId={userId}
@@ -202,13 +255,13 @@ export default function App() {
           <div className="flex items-center gap-4">
             <button
               onClick={() => setIsSupportOpen(true)}
-              className="text-slate-400 hover:text-slate-200 transition-colors"
+              className="text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
             >
               Non-Clinical Disclaimer & Crisis Info
             </button>
             <button
               onClick={() => setActiveTab("security")}
-              className="text-slate-400 hover:text-slate-200 transition-colors"
+              className="text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
             >
               Privacy & Security
             </button>
