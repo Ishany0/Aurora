@@ -4,11 +4,23 @@ import { getFirestore, doc, getDocFromServer, collection, setDoc, getDoc, getDoc
 import { getStorage, ref, uploadString, getDownloadURL } from "firebase/storage";
 import firebaseConfig from "../../firebase-applet-config.json";
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+// Initialize Firebase with environment variables or applet configuration
+const metaEnv = typeof import.meta !== "undefined" ? (import.meta as any).env || {} : {};
 
-// CRITICAL: The app will break without specifying firestoreDatabaseId
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+const clientConfig = {
+  apiKey: metaEnv.VITE_FIREBASE_API_KEY || firebaseConfig.apiKey,
+  authDomain: metaEnv.VITE_FIREBASE_AUTH_DOMAIN || firebaseConfig.authDomain,
+  projectId: metaEnv.VITE_FIREBASE_PROJECT_ID || firebaseConfig.projectId,
+  storageBucket: metaEnv.VITE_FIREBASE_STORAGE_BUCKET || firebaseConfig.storageBucket,
+  messagingSenderId: metaEnv.VITE_FIREBASE_MESSAGING_SENDER_ID || firebaseConfig.messagingSenderId,
+  appId: metaEnv.VITE_FIREBASE_APP_ID || firebaseConfig.appId,
+  firestoreDatabaseId: metaEnv.VITE_FIRESTORE_DATABASE_ID || firebaseConfig.firestoreDatabaseId,
+};
+
+const app = initializeApp(clientConfig);
+
+// CRITICAL: Bind explicitly to firestoreDatabaseId
+export const db = getFirestore(app, clientConfig.firestoreDatabaseId || firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
 export const storage = getStorage(app);
 export const googleProvider = new GoogleAuthProvider();

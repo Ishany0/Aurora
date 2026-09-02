@@ -109,6 +109,7 @@ Aurora uses a full-stack architecture deployed on Google Cloud Run. The backend 
 - **Strict Owner Isolation**: Database reads and writes are restricted to `/users/{request.auth.uid}/...`. Cross-user data queries are denied at the database engine level.
 - **Zero Cross-Tenant Leakage**: Signing out immediately purges all in-memory React state (`entries`, `corrections`, `settings`) and detaches active Firestore snapshot listeners.
 - **No Hardcoded Secrets**: Secrets and API keys are injected via environment variables or Secret Manager, never exposed in client bundles or public repositories.
+- **Firebase Web Config vs. Server Secrets**: Firebase Web Configuration (`apiKey`, `projectId`, `appId`) identifies the Firebase project to the browser client and is secured by Firestore & Storage Security Rules. Sensitive API keys (such as `GEMINI_API_KEY`) are kept exclusively on the server side and mounted via Google Cloud Secret Manager.
 - **No Third-Party Analytics Tracking**: Raw reflection text is never sent to third-party telemetry, tracking pixels, or external LLM logging services.
 - **Full User Sovereignty**: Users can exclude individual entries from pattern synthesis, export complete records, or permanently wipe their account and data.
 

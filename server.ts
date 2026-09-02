@@ -188,10 +188,9 @@ app.post("/api/reflect", rateLimitMiddleware, async (req, res) => {
       actionStatus: actionResult ? "available" : "unavailable",
     });
   } catch (error: any) {
-    console.error("Unexpected error during reflection pipeline:", error);
+    console.error("Unexpected error during reflection pipeline:", error?.message || error);
     return res.status(500).json({
-      error: "An unexpected error occurred during reflection processing.",
-      details: error?.message || String(error),
+      error: "AI service temporarily unavailable.",
     });
   }
 });
@@ -211,10 +210,9 @@ app.post("/api/insights", rateLimitMiddleware, async (req, res) => {
     const insightResult = await runInsightAgent(entriesSummary);
     return res.json({ insightResult });
   } catch (error: any) {
-    console.error("Error synthesizing weekly insights:", error);
+    console.error("Error synthesizing weekly insights:", error?.message || error);
     return res.status(500).json({
       error: "Unable to synthesize pattern digest at this time.",
-      details: error?.message || String(error),
     });
   }
 });
@@ -227,7 +225,8 @@ app.get("/api/rules-test", (_req, res) => {
     const testResults = runRulesVerification();
     res.json(testResults);
   } catch (error: any) {
-    res.status(500).json({ error: error?.message || "Failed to run rules verification" });
+    console.error("Error running rules verification:", error?.message || error);
+    res.status(500).json({ error: "Failed to run rules verification." });
   }
 });
 
