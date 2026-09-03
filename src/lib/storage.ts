@@ -42,7 +42,7 @@ function getInsightsKey(userId: string): string {
 export async function syncEntryToFirestore(userId: string, entry: JournalEntry): Promise<void> {
   const currentUid = auth.currentUser?.uid;
   if (!currentUid || currentUid !== userId) {
-    console.error("Privacy validation error: Authenticated UID does not match operation target.");
+    // In local private session or pending auth, save is handled by local-scoped store
     return;
   }
 
@@ -71,7 +71,6 @@ export async function syncEntryToFirestore(userId: string, entry: JournalEntry):
 export async function deleteEntryFromFirestore(userId: string, entryId: string): Promise<void> {
   const currentUid = auth.currentUser?.uid;
   if (!currentUid || currentUid !== userId) {
-    console.error("Privacy validation error: Authenticated UID does not match operation target.");
     return;
   }
   const path = `users/${userId}/entries/${entryId}`;

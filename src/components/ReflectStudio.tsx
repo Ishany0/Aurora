@@ -28,6 +28,7 @@ import confetti from "canvas-confetti";
 import type { JournalEntry, MoodSignalResult, ActionItem, MoodCorrection, UserSettings } from "../types.js";
 import { upsertEntry, saveCorrection } from "../lib/storage.js";
 import { uploadUserPhoto, auth } from "../lib/firebase.js";
+import { ExplainabilityModal } from "./ExplainabilityModal.js";
 
 interface ReflectStudioProps {
   userId: string;
@@ -65,6 +66,18 @@ export const ReflectStudio: React.FC<ReflectStudioProps> = ({
 
   // Explainability & Correction state
   const [showExplainPanel, setShowExplainPanel] = useState(false);
+  const [explainModalData, setExplainModalData] = useState<{
+    title: string;
+    evidence: {
+      entriesCount: number;
+      dateRange: string;
+      repeatedTopics: string[];
+      confidence: "high" | "medium" | "low" | string;
+      userConfirmedCorrectionsUsed: boolean;
+      isInsufficientHistory?: boolean;
+      explanationSummary?: string;
+    };
+  } | null>(null);
   const [isOverridingMood, setIsOverridingMood] = useState(false);
   const [customMoodInput, setCustomMoodInput] = useState("");
 
@@ -884,17 +897,41 @@ export const ReflectStudio: React.FC<ReflectStudioProps> = ({
                   )}
                 </div>
 
-                {/* Confidence state */}
-                <div className="text-xs text-slate-400 font-mono">
-                  {isLowConfidence && !activeEntry.userMoodOverride ? (
-                    <span className="text-amber-400 font-sans text-xs">
-                      Not sure how to tag this one — want to add a word for it?
-                    </span>
-                  ) : (
-                    <span>
-                      Confidence: {activeEntry.confidence && activeEntry.confidence >= 0.8 ? "High" : "Medium"} ({Math.round((activeEntry.confidence || 0.85) * 100)}%)
-                    </span>
-                  )}
+                {/* Confidence state & Explainability Button */}
+                <div className="flex items-center gap-3">
+                  <div className="text-xs text-slate-400 font-mono">
+                    {isLowConfidence && !activeEntry.userMoodOverride ? (
+                      <span className="text-amber-400 font-sans text-xs">
+                        Not sure how to tag this one — want to add a word for it?
+                      </span>
+                    ) : (
+                      <span>
+                        Confidence: {activeEntry.confidence && activeEntry.confidence >= 0.8 ? "High" : (activeEntry.confidence || 0) >= 0.6 ? "Medium" : "Low"} ({Math.round((activeEntry.confidence || 0.85) * 100)}%)
+                      </span>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setExplainModalData({
+                        title: `Mood Signal: ${activeEntry.userMoodOverride || activeEntry.mood || "Reflective"}`,
+                        evidence: {
+                          entriesCount: 1,
+                          dateRange: new Date(activeEntry.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }),
+                          repeatedTopics: activeEntry.topics && activeEntry.topics.length > 0 ? activeEntry.topics : ["Daily Reflection"],
+                          confidence: (activeEntry.confidence || 0.85) >= 0.8 ? "high" : (activeEntry.confidence || 0.85) >= 0.6 ? "medium" : "low",
+                          userConfirmedCorrectionsUsed: Boolean(activeEntry.userMoodOverride || activeEntry.evidenceSummary?.correctedByUser),
+                          explanationSummary: `Grounded in 1 user-approved reflection (${activeEntry.content.split(/\s+/).length} words). Classification derived from vocabulary without exposing private thinking traces.`
+                        }
+                      });
+                    }}
+                    className="text-xs text-teal-400 hover:text-teal-300 flex items-center gap-1 font-medium cursor-pointer"
+                    title="Why am I seeing this?"
+                  >
+                    <HelpCircle className="w-3.5 h-3.5" />
+                    <span>Why am I seeing this?</span>
+                  </button>
                 </div>
               </div>
 
@@ -932,9 +969,32 @@ export const ReflectStudio: React.FC<ReflectStudioProps> = ({
           {activeEntry.analysisStatus !== "unavailable" && (
             activeEntry.reflection ? (
               <div className="p-6 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 shadow-lg space-y-3">
-                <div className="flex items-center gap-2 text-teal-400 text-xs font-bold uppercase tracking-wider">
-                  <Sparkles className="w-4 h-4" />
-                  <span>A reflection for you</span>
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2 text-teal-400 text-xs font-bold uppercase tracking-wider">
+                    <Sparkles className="w-4 h-4" />
+                    <span>A reflection for you</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setExplainModalData({
+                        title: `Empathetic Reflection Insight`,
+                        evidence: {
+                          entriesCount: 1,
+                          dateRange: new Date(activeEntry.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }),
+                          repeatedTopics: activeEntry.topics && activeEntry.topics.length > 0 ? activeEntry.topics : ["Daily Reflection"],
+                          confidence: (activeEntry.confidence || 0.85) >= 0.8 ? "high" : (activeEntry.confidence || 0.85) >= 0.6 ? "medium" : "low",
+                          userConfirmedCorrectionsUsed: Boolean(activeEntry.userMoodOverride || activeEntry.evidenceSummary?.correctedByUser),
+                          explanationSummary: `Synthesized directly from your single private journal entry without exposing private internal reasoning traces.`
+                        }
+                      });
+                    }}
+                    className="text-xs text-teal-400 hover:text-teal-300 flex items-center gap-1 font-medium cursor-pointer"
+                    title="Why am I seeing this?"
+                  >
+                    <HelpCircle className="w-3.5 h-3.5" />
+                    <span>Why am I seeing this?</span>
+                  </button>
                 </div>
                 <p className="text-base text-slate-100 leading-relaxed font-sans">
                   {activeEntry.reflection}
@@ -986,6 +1046,27 @@ export const ReflectStudio: React.FC<ReflectStudioProps> = ({
                   <span className="px-2.5 py-0.5 rounded-full bg-indigo-950/60 border border-indigo-800/40 text-indigo-300 capitalize text-[11px]">
                     {activeEntry.action.category}
                   </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setExplainModalData({
+                        title: `Action Recommendation: ${activeEntry.action?.action || "Next Step"}`,
+                        evidence: {
+                          entriesCount: 1,
+                          dateRange: new Date(activeEntry.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }),
+                          repeatedTopics: activeEntry.topics && activeEntry.topics.length > 0 ? activeEntry.topics : ["Daily Reflection"],
+                          confidence: (activeEntry.confidence || 0.85) >= 0.8 ? "high" : (activeEntry.confidence || 0.85) >= 0.6 ? "medium" : "low",
+                          userConfirmedCorrectionsUsed: Boolean(activeEntry.userMoodOverride || activeEntry.evidenceSummary?.correctedByUser),
+                          explanationSummary: `Proposed by Action Agent based on your entry's identified reflection themes. Practical step categorized under ${activeEntry.action?.category} with estimated ${activeEntry.action?.effort} effort.`
+                        }
+                      });
+                    }}
+                    className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 font-medium cursor-pointer ml-1"
+                    title="Why am I seeing this?"
+                  >
+                    <HelpCircle className="w-3.5 h-3.5" />
+                    <span>Why am I seeing this?</span>
+                  </button>
                 </div>
               </div>
 
@@ -1105,7 +1186,19 @@ export const ReflectStudio: React.FC<ReflectStudioProps> = ({
           {/* Explainability Accordion ("Why am I seeing this?") */}
           <div className="border-t border-slate-800/80 pt-4 flex items-center justify-between">
             <button
-              onClick={() => setShowExplainPanel(!showExplainPanel)}
+              onClick={() => {
+                setExplainModalData({
+                  title: `Reflection Analysis Evidence`,
+                  evidence: {
+                    entriesCount: 1,
+                    dateRange: new Date(activeEntry.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }),
+                    repeatedTopics: activeEntry.topics && activeEntry.topics.length > 0 ? activeEntry.topics : ["Daily Reflection"],
+                    confidence: (activeEntry.confidence || 0.85) >= 0.8 ? "high" : (activeEntry.confidence || 0.85) >= 0.6 ? "medium" : "low",
+                    userConfirmedCorrectionsUsed: Boolean(activeEntry.userMoodOverride || activeEntry.evidenceSummary?.correctedByUser),
+                    explanationSummary: `Grounded in your private reflection (${activeEntry.content.split(/\s+/).length} words). Zero hidden chain-of-thought traces.`
+                  }
+                });
+              }}
               className="text-xs text-slate-400 hover:text-teal-300 flex items-center gap-1.5 font-medium transition-colors cursor-pointer"
             >
               <HelpCircle className="w-4 h-4 text-teal-400" />
@@ -1132,19 +1225,28 @@ export const ReflectStudio: React.FC<ReflectStudioProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                    Supporting Data
+                    Approved Entries Used
                   </span>
                   <p className="text-xs text-slate-200">
-                    Based on 1 approved entry ({activeEntry.evidenceSummary?.wordCount || activeEntry.content.split(/\s+/).length} words) recorded on {new Date(activeEntry.createdAt).toLocaleDateString()}.
+                    1 approved entry ({activeEntry.evidenceSummary?.wordCount || activeEntry.content.split(/\s+/).length} words)
                   </p>
                 </div>
 
                 <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                    Repeated Topic
+                    Date Range
                   </span>
                   <p className="text-xs text-slate-200">
-                    Repeated topic: {activeEntry.topics?.join(", ") || "daily reflection"}.
+                    {new Date(activeEntry.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
+                  </p>
+                </div>
+
+                <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                    Repeated Topics
+                  </span>
+                  <p className="text-xs text-slate-200">
+                    {activeEntry.topics?.join(", ") || "Daily reflection"}
                   </p>
                 </div>
 
@@ -1153,18 +1255,18 @@ export const ReflectStudio: React.FC<ReflectStudioProps> = ({
                     Confidence Level
                   </span>
                   <p className="text-xs text-slate-200 font-mono">
-                    Confidence: {(activeEntry.confidence || 0.85) >= 0.8 ? "High" : (activeEntry.confidence || 0.85) >= 0.6 ? "Medium" : "Low"} ({Math.round((activeEntry.confidence || 0.85) * 100)}%).
+                    {(activeEntry.confidence || 0.85) >= 0.8 ? "High" : (activeEntry.confidence || 0.85) >= 0.6 ? "Medium" : "Low"} ({Math.round((activeEntry.confidence || 0.85) * 100)}%)
                   </p>
                 </div>
 
-                <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
+                <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-1 sm:col-span-2">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                    User Calibration
+                    User Corrections
                   </span>
                   <p className="text-xs text-slate-200">
                     {activeEntry.userMoodOverride || activeEntry.evidenceSummary?.correctedByUser
-                      ? "You corrected a similar mood label previously."
-                      : "Standard autonomous signal."}
+                      ? "User-confirmed mood correction used in calibration."
+                      : "No user corrections applied (autonomous baseline model)."}
                   </p>
                 </div>
               </div>
@@ -1177,6 +1279,16 @@ export const ReflectStudio: React.FC<ReflectStudioProps> = ({
           )}
 
         </div>
+      )}
+
+      {/* Explainability Modal */}
+      {explainModalData && (
+        <ExplainabilityModal
+          isOpen={true}
+          onClose={() => setExplainModalData(null)}
+          title={explainModalData.title}
+          evidence={explainModalData.evidence}
+        />
       )}
 
     </div>

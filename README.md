@@ -32,7 +32,15 @@ Aurora is a private, multimodal reflection workspace that transforms honest pers
 
 - **One Manageable Step**: Refuses to generate overwhelming multi-step task backlogs; outputs exactly one practical next action that the user can accept, edit, or dismiss.
 - **Fail-Safe Persistence (Save-Before-AI)**: Raw user reflections are committed to Cloud Firestore before triggering any AI generation, ensuring zero data loss on network or API timeouts.
-- **Non-Clinical & Transparent**: Not a chatbot or medical tool. Every insight includes transparent evidence citations (e.g., *“Based on 4 entries over the last 10 days”*) with zero hidden chain-of-thought.
+- **“Why am I seeing this?” Explainability & Zero Chain-of-Thought**: Every reflection, mood signal, and recurring pattern includes an accessible transparency panel detailing:
+  - *Approved Entries Used*: Exact count of private user entries supporting the signal.
+  - *Date Range*: The explicit timeframe analyzed.
+  - *Repeated Topics*: Recurring themes extracted directly from user reflections.
+  - *Confidence Level*: Transparent rating (High, Medium, Low).
+  - *User Calibration*: Clear indication of whether user mood overrides influenced the classification.
+  - *Zero Chain-of-Thought Leakage*: Internal reasoning traces and hidden prompts are never exposed, protecting cognitive privacy.
+  - *Threshold Transparency*: If fewer than 5 approved entries exist, Aurora clearly informs the user: *“Keep reflecting—Aurora needs at least 5 approved entries before it can identify a reliable pattern.”*
+- **Non-Clinical & Grounded**: Not a diagnostic chatbot or medical tool. Insights are grounded solely in user-authored reflections.
 - **Calibrated Tag Memory**: Users can override AI-detected mood tags; Aurora stores recent corrections per user and includes them as few-shot context for subsequent mood tagging, without cross-user training or shared models.
 - **True Owner Isolation**: Enforces subcollection security rules (`/users/{uid}/...`) preventing cross-user data leakage and providing instant full-data export (JSON/Markdown) or complete account wipe.
 
@@ -239,6 +247,11 @@ gcloud run deploy aurora-reflection \
   --platform managed \
   --allow-unauthenticated \
   --set-secrets GEMINI_API_KEY=GEMINI_API_KEY:latest \
+  --update-labels=dev-tutorial=cloud-run-ai-challenge
+
+# Alternatively, if already deployed, apply the verification label:
+gcloud run services update aurora-reflection \
+  --region=$REGION \
   --update-labels=dev-tutorial=cloud-run-ai-challenge
 
 # 5. Deploy Firestore Security Rules

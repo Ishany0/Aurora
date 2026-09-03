@@ -18,6 +18,7 @@ import {
   UserX,
   Sliders,
   Check,
+  LogOut,
 } from "lucide-react";
 import type { UserSettings } from "../types.js";
 import {
@@ -33,6 +34,7 @@ interface SecurityPanelProps {
   userId: string;
   onSettingsChange: (updated: UserSettings) => void;
   onDataWiped: () => void;
+  onSignOut?: () => void;
 }
 
 export const SecurityPanel: React.FC<SecurityPanelProps> = ({
@@ -40,6 +42,7 @@ export const SecurityPanel: React.FC<SecurityPanelProps> = ({
   userId,
   onSettingsChange,
   onDataWiped,
+  onSignOut,
 }) => {
   // Test Runner state
   const [isRunningTests, setIsRunningTests] = useState(false);
@@ -351,11 +354,11 @@ export const SecurityPanel: React.FC<SecurityPanelProps> = ({
 
         </div>
 
-        {/* Export and Wipe Buttons */}
+        {/* Export, Sign Out, and Wipe Buttons */}
         <div className="pt-4 border-t border-slate-800 flex flex-wrap items-center gap-3">
           <button
             onClick={handleExportJSON}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-colors"
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-colors cursor-pointer"
           >
             <Download className="w-3.5 h-3.5 text-indigo-400" />
             <span>Export Complete JSON Archive</span>
@@ -363,16 +366,27 @@ export const SecurityPanel: React.FC<SecurityPanelProps> = ({
 
           <button
             onClick={handleExportMarkdown}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-colors"
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-colors cursor-pointer"
           >
             <FileText className="w-3.5 h-3.5 text-teal-400" />
             <span>Export Markdown Journal</span>
           </button>
 
+          {onSignOut && (
+            <button
+              onClick={onSignOut}
+              className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-300 hover:text-rose-300 border border-slate-700 text-xs font-semibold transition-colors cursor-pointer"
+              title="Sign out of current reflection session"
+            >
+              <LogOut className="w-3.5 h-3.5 text-rose-400" />
+              <span>Sign Out of Session</span>
+            </button>
+          )}
+
           <button
             onClick={handleFullWipe}
             disabled={isDeletingAccount}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-rose-950/60 hover:bg-rose-900/80 border border-rose-800/80 text-rose-300 text-xs font-semibold transition-colors sm:ml-auto"
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-rose-950/60 hover:bg-rose-900/80 border border-rose-800/80 text-rose-300 text-xs font-semibold transition-colors sm:ml-auto cursor-pointer"
           >
             {isDeletingAccount ? (
               <>

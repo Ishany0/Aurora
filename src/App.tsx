@@ -16,14 +16,31 @@ import {
   subscribeToUserEntries,
   syncSettingsToFirestore,
 } from "./lib/storage.js";
-import { auth, googleProvider } from "./lib/firebase.js";
-import { onAuthStateChanged, signInWithPopup, signOut, type User } from "firebase/auth";
+import {
+  auth,
+  googleProvider,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
+  signInAnonymously,
+  signOut,
+  onAuthStateChanged,
+  type User,
+  clientConfig,
+} from "./lib/firebase.js";
 import type { JournalEntry, UserSettings, MoodCorrection } from "./types.js";
 import { Shield } from "lucide-react";
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState<boolean>(true);
+  const [isSigningIn, setIsSigningIn] = useState<boolean>(false);
+  const [authError, setAuthError] = useState<{
+    code: string;
+    message: string;
+    details?: string;
+  } | null>(null);
   const [activeTab, setActiveTab] = useState<"reflect" | "timeline" | "patterns" | "companion" | "security">("reflect");
   
   const [entries, setEntries] = useState<JournalEntry[]>([]);
@@ -31,12 +48,91 @@ export default function App() {
   const [corrections, setCorrections] = useState<MoodCorrection[]>([]);
   const [isSupportOpen, setIsSupportOpen] = useState(false);
 
+  // Check for redirect result on page load
+  useEffect(() => {
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result && result.user) {
+          console.log("[Aurora Auth] getRedirectResult SUCCESS:", {
+            uid: result.user.uid,
+            email: result.user.email,
+            displayName: result.user.displayName,
+          });
+          setCurrentUser(result.user);
+          setAuthLoading(false);
+        }
+      })
+      .catch((err: any) => {
+        console.error("[Aurora Auth] getRedirectResult Error:", {
+          code: err?.code,
+          message: err?.message,
+          customData: err?.customData,
+        });
+        setAuthError({
+          code: err?.code || "auth/redirect-error",
+          message: err?.message || "Redirect authentication failed.",
+        });
+      });
+  }, []);
+
+  // Restore active local session if present on mount
+  useEffect(() => {
+    try {
+      const storedLocalUser = localStorage.getItem("aurora_active_local_user");
+      if (storedLocalUser && !currentUser) {
+        const parsed = JSON.parse(storedLocalUser);
+        if (parsed && parsed.uid) {
+          console.log("[Aurora Auth] Restored local private session:", parsed.email);
+          setCurrentUser(parsed);
+          setAuthLoading(false);
+        }
+      }
+    } catch (e) {
+      console.warn("[Aurora Auth] Error reading local user session:", e);
+    }
+  }, []);
+
   // Central Firebase Authentication listener
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setCurrentUser(user ?? null);
-      setAuthLoading(false);
+    console.log("[Aurora Auth] Initializing onAuthStateChanged listener...", {
+      authDomain: clientConfig.authDomain,
+      projectId: clientConfig.projectId,
     });
+
+    const unsubscribe = onAuthStateChanged(
+      auth,
+      (user) => {
+        console.log("[Aurora Auth] onAuthStateChanged:", user ? `Authenticated as ${user.email} (${user.uid})` : "Unauthenticated");
+        if (user) {
+          // If a real Firebase user logs in, prioritize it and clear any mock local session
+          localStorage.removeItem("aurora_active_local_user");
+          setCurrentUser(user);
+        } else {
+          // Check if local private session is active before setting to null
+          const storedLocalUser = localStorage.getItem("aurora_active_local_user");
+          if (storedLocalUser) {
+            try {
+              const parsed = JSON.parse(storedLocalUser);
+              if (parsed?.uid) {
+                setCurrentUser(parsed);
+                setAuthLoading(false);
+                return;
+              }
+            } catch {}
+          }
+          setCurrentUser(null);
+        }
+        setAuthLoading(false);
+      },
+      (error) => {
+        console.error("[Aurora Auth] onAuthStateChanged error:", error);
+        setAuthError({
+          code: (error as any)?.code || "auth/state-error",
+          message: error.message,
+        });
+        setAuthLoading(false);
+      }
+    );
 
     return () => unsubscribe();
   }, []);
@@ -76,11 +172,125 @@ export default function App() {
     };
   }, [currentUser]);
 
-  const handleSignIn = async () => {
+  const handleSignIn = async (useRedirect = false) => {
+    setAuthError(null);
+    setIsSigningIn(true);
+    console.log(`[Aurora Auth] Starting sign-in flow (mode: ${useRedirect ? "redirect" : "popup"})...`, {
+      authDomain: clientConfig.authDomain,
+      projectId: clientConfig.projectId,
+      origin: window.location.origin,
+      hostname: window.location.hostname,
+    });
+
     try {
-      await signInWithPopup(auth, googleProvider);
-    } catch (err) {
-      console.warn("Sign in popup encountered an error or was closed:", err);
+      if (useRedirect) {
+        console.log("[Aurora Auth] Invoking signInWithRedirect...");
+        await signInWithRedirect(auth, googleProvider);
+        return;
+      }
+
+      console.log("[Aurora Auth] Invoking signInWithPopup...");
+      const result = await signInWithPopup(auth, googleProvider);
+      console.log("[Aurora Auth] signInWithPopup SUCCESS:", {
+        uid: result.user.uid,
+        email: result.user.email,
+        displayName: result.user.displayName,
+      });
+
+      // Synchronize immediately
+      setCurrentUser(result.user);
+      setAuthLoading(false);
+    } catch (err: any) {
+      console.error("[Aurora Auth] Sign-in failed with error:", {
+        code: err?.code,
+        message: err?.message,
+        customData: err?.customData,
+        stack: err?.stack,
+      });
+
+      let friendlyMessage = err?.message || "An authentication error occurred.";
+      if (err?.code === "auth/configuration-not-found") {
+        friendlyMessage = `Firebase Authentication is not yet enabled or configured in Firebase Console for project "${clientConfig.projectId}". Open Firebase Console → Authentication → click "Get Started" → enable Google provider under "Sign-in method". In the meantime, you can click "Continue with Instant Private Session" below to explore all features immediately.`;
+      } else if (err?.code === "auth/unauthorized-domain") {
+        friendlyMessage = `This domain (${window.location.hostname}) is not authorized in Firebase Authentication. Add it to Firebase Console → Authentication → Settings → Authorized Domains.`;
+      } else if (err?.code === "auth/operation-not-allowed") {
+        friendlyMessage = "Google provider is not enabled in Firebase Console. Go to Authentication → Sign-in method and enable Google.";
+      } else if (err?.code === "auth/popup-closed-by-user") {
+        friendlyMessage = "The sign-in popup was closed before completing authentication. Please try again or use redirect sign-in.";
+      } else if (err?.code === "auth/popup-blocked") {
+        friendlyMessage = "The popup was blocked by your browser. Please allow popups or use redirect sign-in.";
+      } else if (err?.code === "auth/network-request-failed") {
+        friendlyMessage = "Network error connecting to Firebase Auth. Please verify your connection or domain configuration.";
+      }
+
+      setAuthError({
+        code: err?.code || "auth/unknown",
+        message: friendlyMessage,
+        details: err?.message,
+      });
+    } finally {
+      setIsSigningIn(false);
+    }
+  };
+
+  const handleGuestSignIn = async () => {
+    setAuthError(null);
+    setIsSigningIn(true);
+    console.log("[Aurora Auth] Starting guest/instant private session...");
+
+    try {
+      // First try Firebase anonymous sign-in if enabled
+      const anonResult = await signInAnonymously(auth);
+      console.log("[Aurora Auth] signInAnonymously SUCCESS:", anonResult.user.uid);
+      setCurrentUser(anonResult.user);
+      setAuthLoading(false);
+    } catch (err: any) {
+      console.warn("[Aurora Auth] Anonymous sign-in unavailable, establishing local isolated private session:", err?.code);
+      // Fall back safely to isolated local private workspace
+      const localId = "aurora-private-local-user";
+      const localUser = {
+        uid: localId,
+        email: "private-journaler@aurora.local",
+        displayName: "Private Reflection Workspace",
+        isAnonymous: true,
+      } as unknown as User;
+
+      localStorage.setItem("aurora_active_local_user", JSON.stringify(localUser));
+      setCurrentUser(localUser);
+      setAuthLoading(false);
+    } finally {
+      setIsSigningIn(false);
+    }
+  };
+
+  const handleSwitchAccount = async () => {
+    setAuthError(null);
+    setIsSigningIn(true);
+    console.log("[Aurora Auth] Initiating account switch via Google popup...");
+
+    try {
+      // Google provider configured with select_account prompt to force account chooser
+      const switchProvider = new GoogleAuthProvider();
+      switchProvider.setCustomParameters({
+        prompt: "select_account",
+      });
+
+      const result = await signInWithPopup(auth, switchProvider);
+      console.log("[Aurora Auth] Switch account successful:", {
+        uid: result.user.uid,
+        email: result.user.email,
+        displayName: result.user.displayName,
+      });
+
+      localStorage.removeItem("aurora_active_local_user");
+      setCurrentUser(result.user);
+      setAuthLoading(false);
+    } catch (err: any) {
+      if (err?.code !== "auth/popup-closed-by-user") {
+        console.error("[Aurora Auth] Switch account error:", err);
+      }
+    } finally {
+      setIsSigningIn(false);
     }
   };
 
@@ -91,10 +301,17 @@ export default function App() {
       setCorrections([]);
       setSettings(getStoredSettings(""));
       setActiveTab("reflect");
+      localStorage.removeItem("aurora_active_local_user");
       // 2. Call Firebase Auth signOut
-      await signOut(auth);
+      if (auth.currentUser) {
+        await signOut(auth);
+      } else {
+        setCurrentUser(null);
+      }
     } catch (err) {
       console.error("Sign out error:", err);
+      localStorage.removeItem("aurora_active_local_user");
+      setCurrentUser(null);
     }
   };
 
@@ -156,6 +373,10 @@ export default function App() {
       <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
         <LandingView
           onSignIn={handleSignIn}
+          onGuestSignIn={handleGuestSignIn}
+          isSigningIn={isSigningIn}
+          authError={authError}
+          onClearError={() => setAuthError(null)}
           onOpenSupport={() => setIsSupportOpen(true)}
         />
         <SupportModal
@@ -170,6 +391,8 @@ export default function App() {
   // Render ONLY the private application shell scoped to currentUser.uid.
   const userId = currentUser.uid;
   const userEmail = currentUser.email || "";
+  const userName = currentUser.displayName || undefined;
+  const userPhotoURL = currentUser.photoURL || undefined;
   const latestMood = entries.length > 0 ? (entries[0].userMoodOverride || entries[0].mood || "Calm") : "Calm";
 
   return (
@@ -182,14 +405,17 @@ export default function App() {
         <div className="absolute -bottom-40 left-1/3 w-96 h-96 bg-purple-900/10 rounded-full blur-3xl" />
       </div>
 
-      {/* Top Navigation */}
+      {/* Top Navigation with Gmail-style Profile Dropdown */}
       <Navbar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         userEmail={userEmail}
+        userName={userName}
+        userPhotoURL={userPhotoURL}
         settings={settings}
         onOpenSupport={() => setIsSupportOpen(true)}
         onSignOut={handleSignOut}
+        onSwitchAccount={handleSwitchAccount}
       />
 
       {/* Main Authenticated View Container */}
@@ -234,6 +460,7 @@ export default function App() {
             userId={userId}
             onSettingsChange={(updated) => setSettings(updated)}
             onDataWiped={handleDataWiped}
+            onSignOut={handleSignOut}
           />
         )}
       </main>

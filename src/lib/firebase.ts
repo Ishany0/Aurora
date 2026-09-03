@@ -1,5 +1,17 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, type User } from "firebase/auth";
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
+  signInAnonymously,
+  signOut,
+  onAuthStateChanged,
+  setPersistence,
+  browserLocalPersistence,
+  type User,
+} from "firebase/auth";
 import { getFirestore, doc, getDocFromServer, collection, setDoc, getDoc, getDocs, deleteDoc, query, orderBy, onSnapshot } from "firebase/firestore";
 import { getStorage, ref, uploadString, getDownloadURL } from "firebase/storage";
 import firebaseConfig from "../../firebase-applet-config.json";
@@ -7,7 +19,7 @@ import firebaseConfig from "../../firebase-applet-config.json";
 // Initialize Firebase with environment variables or applet configuration
 const metaEnv = typeof import.meta !== "undefined" ? (import.meta as any).env || {} : {};
 
-const clientConfig = {
+export const clientConfig = {
   apiKey: metaEnv.VITE_FIREBASE_API_KEY || firebaseConfig.apiKey,
   authDomain: metaEnv.VITE_FIREBASE_AUTH_DOMAIN || firebaseConfig.authDomain,
   projectId: metaEnv.VITE_FIREBASE_PROJECT_ID || firebaseConfig.projectId,
@@ -22,8 +34,21 @@ const app = initializeApp(clientConfig);
 // CRITICAL: Bind explicitly to firestoreDatabaseId
 export const db = getFirestore(app, clientConfig.firestoreDatabaseId || firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
+
+// Ensure local persistence for secure sessions across reloads
+setPersistence(auth, browserLocalPersistence).catch((err) => {
+  console.warn("[Aurora Auth] Could not set browserLocalPersistence:", err);
+});
+
 export const storage = getStorage(app);
+
 export const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({
+  prompt: "select_account",
+});
+
+export { GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signInAnonymously, signOut, onAuthStateChanged };
+export type { User };
 
 /**
  * Uploads a user photo safely to their isolated storage path /users/{userId}/uploads/{uploadId}

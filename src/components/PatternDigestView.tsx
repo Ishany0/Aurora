@@ -347,6 +347,31 @@ export const PatternDigestView: React.FC<PatternDigestViewProps> = ({ entries, u
                 style={{ width: `${(Math.min(eligibleEntries.length, 5) / 5) * 100}%` }}
               />
             </div>
+            {eligibleEntries.length < 5 && (
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedExplainItem({
+                      title: "Pattern Synthesis Threshold",
+                      evidence: {
+                        entriesCount: eligibleEntries.length,
+                        dateRange: "Current period",
+                        repeatedTopics: ["Personal Reflection"],
+                        confidence: "low",
+                        userConfirmedCorrectionsUsed: false,
+                        isInsufficientHistory: true,
+                        explanationSummary: "Keep reflecting—Aurora needs at least 5 approved entries before it can identify a reliable pattern.",
+                      }
+                    });
+                  }}
+                  className="inline-flex items-center gap-1.5 text-xs text-teal-400 hover:text-teal-300 font-medium cursor-pointer"
+                >
+                  <HelpCircle className="w-3.5 h-3.5" />
+                  <span>Why am I seeing this?</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
