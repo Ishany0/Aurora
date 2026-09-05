@@ -2,124 +2,135 @@
 
 > **Reflect privately. Find one manageable next step.**
 
-[![Cloud Run Deployed](https://img.shields.io/badge/Google%20Cloud-Cloud%20Run-blue?logo=googlecloud)](https://cloud.google.com/run)
-[![Firebase Security](https://img.shields.io/badge/Security-Owner--Isolated%20Rules-teal?logo=firebase)](https://firebase.google.com)
-[![Gemini API](https://img.shields.io/badge/AI-Gemini%20Flash%20Ladder-orange?logo=googlegemini)](https://ai.google.dev)
+[![Google Cloud Run](https://img.shields.io/badge/Google_Cloud_Run-Deployed-4285F4?style=flat-square&logo=google-cloud&logoColor=white)](https://cloud.google.com/run)
+[![Gemini API](https://img.shields.io/badge/Gemini_API-Multi--Agent-8E75B2?style=flat-square&logo=google-gemini&logoColor=white)](https://ai.google.dev/)
+[![Firebase Auth](https://img.shields.io/badge/Firebase_Auth-Google_Sign--In-FFCA28?style=flat-square&logo=firebase&logoColor=black)](https://firebase.google.com/)
+[![Cloud Firestore](https://img.shields.io/badge/Cloud_Firestore-Owner--Isolated-FFCA28?style=flat-square&logo=firebase&logoColor=black)](https://firebase.google.com/docs/firestore)
+[![Secret Manager](https://img.shields.io/badge/Secret_Manager-Zero_Hardcoding-4285F4?style=flat-square&logo=google-cloud&logoColor=white)](https://cloud.google.com/secret-manager)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![React 19](https://img.shields.io/badge/React-19.0-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-38B2AC?style=flat-square&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
+
+[🌐 **Live Demo**](https://ais-dev-wuo2gdbdhq7aa4ie75xoms-874611223113.asia-southeast1.run.app) &nbsp;|&nbsp; [💻 **Source Code**]([YOUR_GITHUB_REPO]) &nbsp;|&nbsp; [🎥 **Demo Video (3 mins)**]([YOUR_VIDEO_URL]) &nbsp;|&nbsp; [📣 **Social Post**]([YOUR_SOCIAL_POST_URL])
 
 ---
 
-## 1. Project Overview & Links
+## 🌪️ The Problem
 
-- **Live Application**: `[YOUR_CLOUD_RUN_URL]`
-- **Source Code Repository**: `[YOUR_GITHUB_REPO]`
-- **Video Demonstration (3 mins)**: `[YOUR_VIDEO_URL]`
+Students and early-career professionals regularly face intense cognitive overload, emotional exhaustion, and burnout. Generic conversational AI chatbots often encourage endless, circular discussions that increase fatigue, while standard productivity software transforms personal vulnerabilities into daunting task backlogs. Furthermore, existing journaling tools frequently route private thoughts to central analytics pools without cryptographic or path-level owner isolation, making users hesitant to express their authentic feelings.
 
 ---
 
-## 2. The Problem
+## 💡 The Solution
 
-Students and early-career professionals regularly encounter intense stress, burnout, and complex decisions. Generic AI chatbots encourage endless, ungrounded conversations that can induce cognitive fatigue, while standard productivity software turns emotional hurdles into overwhelming task lists. Furthermore, existing digital tools often store sensitive emotional reflections in shared data pools or lack transparent data ownership, making users hesitant to express their authentic thoughts.
-
----
-
-## 3. The Solution
-
-Aurora is a private, multimodal reflection workspace that transforms honest personal reflections into grounded emotional signals and exactly one practical, manageable next step. Users can express themselves through typed text, browser voice dictation, or private photo uploads. By leveraging specialized Gemini AI agents, Aurora decouples emotional signal detection from non-clinical empathetic reflection and actionable planning—all while strictly isolating user data inside owner-bound Google Cloud Firestore paths.
+**Aurora** is a private, multimodal reflection workspace that transforms unvarnished personal thoughts into grounded emotional clarity and **exactly one practical next step**. Users express themselves through text, voice dictation, or photo uploads. Rather than running an unconstrained chatbot, Aurora orchestrates four distinct, single-purpose Gemini API agents (Mood & Signal, Reflection, Action, and Pattern Digest) to safely process thoughts while keeping all data isolated strictly inside owner-bound Google Cloud Firestore subcollections.
 
 ---
 
-## 4. What Makes Aurora Different
+## ✨ What Makes Aurora Different
 
-- **One Manageable Step**: Refuses to generate overwhelming multi-step task backlogs; outputs exactly one practical next action that the user can accept, edit, or dismiss.
-- **Fail-Safe Persistence (Save-Before-AI)**: Raw user reflections are committed to Cloud Firestore before triggering any AI generation, ensuring zero data loss on network or API timeouts.
-- **“Why am I seeing this?” Explainability & Zero Chain-of-Thought**: Every reflection, mood signal, and recurring pattern includes an accessible transparency panel detailing:
-  - *Approved Entries Used*: Exact count of private user entries supporting the signal.
-  - *Date Range*: The explicit timeframe analyzed.
-  - *Repeated Topics*: Recurring themes extracted directly from user reflections.
-  - *Confidence Level*: Transparent rating (High, Medium, Low).
-  - *User Calibration*: Clear indication of whether user mood overrides influenced the classification.
-  - *Zero Chain-of-Thought Leakage*: Internal reasoning traces and hidden prompts are never exposed, protecting cognitive privacy.
-  - *Threshold Transparency*: If fewer than 5 approved entries exist, Aurora clearly informs the user: *“Keep reflecting—Aurora needs at least 5 approved entries before it can identify a reliable pattern.”*
-- **Non-Clinical & Grounded**: Not a diagnostic chatbot or medical tool. Insights are grounded solely in user-authored reflections.
-- **Calibrated Tag Memory**: Users can override AI-detected mood tags; Aurora stores recent corrections per user and includes them as few-shot context for subsequent mood tagging, without cross-user training or shared models.
-- **True Owner Isolation**: Enforces subcollection security rules (`/users/{uid}/...`) preventing cross-user data leakage and providing instant full-data export (JSON/Markdown) or complete account wipe.
+- 🎯 **One Manageable Step (Anti-Overwhelm)**: Rejects bloated to-do backlogs; generates exactly one realistic, low-effort next action (with time estimate) that can be accepted, edited, dismissed, or exported directly to your calendar (`.ics` / Google Calendar).
+- 🔒 **Fail-Safe "Save-Before-AI" Storage**: Raw reflections are guaranteed and committed to Cloud Firestore *before* triggering any Gemini API call, ensuring zero lost thoughts even during network or API interruptions.
+- 🔍 **Explainability Panels ("Why am I seeing this?")**: Every insight transparently cites supporting entry counts, date ranges, and confidence levels without leaking internal model reasoning traces.
+- 🧠 **Calibrated Mood Memory**: Users can override AI-detected mood tags; Aurora remembers recent calibrations per user and uses them as few-shot prompt context without cross-user data contamination.
+- 🛡️ **Zero Cross-Tenant Leakage**: Enforces strict Firestore security rules (`/users/{uid}/...`) with automated unit tests, immediate in-memory state wiping on sign-out, and instant one-click data export / deletion.
+- 🎙️ **Private Multimodal Inputs**: Complete support for voice dictation (Web Speech API) and photo reflections (Firebase Storage), with coarse location privacy rounding (~1.1 km).
 
 ---
 
-## 5. Google Technologies Used
+## 🧰 Tech Stack
 
-| Technology | Purpose in Aurora |
-| :--- | :--- |
-| **Gemini API** (`@google/genai`) | Powers four single-purpose agents: Mood & Signal, Reflection, Action, and Pattern Insight with an automated multi-model fallback ladder. |
-| **Firebase Authentication** | Secure Google Sign-In providing verified, tamper-proof user UIDs. |
-| **Cloud Firestore** | Owner-isolated database storing reflections, metadata, mood calibrations, and weekly digests under `/users/{uid}/...`. |
-| **Firebase Storage** | Owner-isolated storage for private multimodal photo attachments (`/users/{uid}/uploads/...`). |
-| **Google Secret Manager** | Secure runtime storage and injection of `GEMINI_API_KEY` without hardcoded secrets. |
-| **Google Cloud Run** | Fully managed containerized production deployment serving the unified Express + React Vite stack. |
-| **Firebase Emulator Suite** | Local testing environment verifying Firestore security rules and cross-user isolation cases. |
+| Layer | Technologies | Purpose |
+| :--- | :--- | :--- |
+| **Frontend** | React 19, Vite, Tailwind CSS v4, Motion | Responsive, accessible, dark-mode reflection studio |
+| **Backend API** | Node.js, Express | Secure API proxy, payload sanitizer & Secret Manager integration |
+| **Authentication** | Firebase Auth (Google Sign-In) | Cryptographic identity & verified JWT user tokens |
+| **Database** | Google Cloud Firestore | Owner-isolated NoSQL collections under `/users/{uid}/...` |
+| **Object Storage** | Firebase Storage | Private photo attachments under `/users/{uid}/uploads/...` |
+| **AI Multi-Agent** | Google Gemini API (`@google/genai`) | Specialized Mood, Reflection, Action, and Digest agents |
+| **Infrastructure** | Google Cloud Run & Secret Manager | Containerized auto-scaling deployment & zero-hardcoding secrets |
+| **Web & Geospatial** | Web Speech API, Google Geocoding API | Client-side voice dictation & privacy-safe location tagging |
 
 ---
 
-## 6. Architecture Overview
+## 🏗 Architecture Overview
 
-Aurora uses a full-stack architecture deployed on Google Cloud Run. The backend handles secure Gemini API proxying, secret management, and validation, while the React client interacts directly with Firebase Authentication and owner-bound Firestore subcollections.
+Aurora runs as a unified, full-stack container on **Google Cloud Run**. The Express backend securely proxies requests to the **Gemini API** using credentials retrieved from **Google Secret Manager**, while the React frontend directly connects to **Firebase Authentication** and **Cloud Firestore** using owner-scoped security rules.
 
 ```text
-[User Browser]
-      │
-      ├── Google Sign-In ───────────► [Firebase Authentication]
-      │                                   │ (Verified JWT UID)
-      │                                   ▼
-      ├── Owner-Bound CRUD ─────────► [Cloud Firestore: /users/{uid}/...]
-      │                                   │
-      ├── Private Image Upload ─────► [Firebase Storage: /users/{uid}/uploads/...]
-      │
-      ▼
-[Google Cloud Run (Express API Gateway)]
-      │ (Injects GEMINI_API_KEY from Secret Manager)
-      ▼
-[Gemini API Multi-Agent Engine]
-      ├── Mood & Signal Agent (Structured JSON + Confidence + Evidence)
-      ├── Reflection Agent (Warm, Non-Clinical Streaming Reply)
-      ├── Action Agent (Single Low-Effort Practical Next Step)
-      └── Pattern Insight Agent (Weekly Multi-Entry Digest)
+               ┌────────────────────────────────────────────────────────┐
+               │                      USER BROWSER                      │
+               └─────────┬───────────────────┬────────────────────┬─────┘
+                         │                   │                    │
+            Google Auth  │       Owner CRUD  │     Upload Image   │
+           (Verified JWT)│    (/users/{uid}) │   (/users/{uid}/..)│
+                         ▼                   ▼                    ▼
+             ┌───────────────────────┐ ┌───────────┐     ┌──────────────┐
+             │ Firebase Auth (Google)│ │ Firestore │     │ Cloud Storage│
+             └───────────────────────┘ └───────────┘     └──────────────┘
+                         │
+                         ▼
+        ┌─────────────────────────────────────────────────┐
+        │       GOOGLE CLOUD RUN CONTAINER (Node/Express) │
+        │  ┌───────────────────────────────────────────┐  │
+        │  │ Google Secret Manager (GEMINI_API_KEY)    │  │
+        │  └─────────────────────┬─────────────────────┘  │
+        └────────────────────────┼────────────────────────┘
+                                 │
+                                 ▼
+             ┌────────────────────────────────────────────┐
+             │       GEMINI API MULTI-AGENT ENGINE        │
+             │  ├── Mood & Signal Agent (Structured JSON) │
+             │  ├── Reflection Agent (Empathetic Stream)  │
+             │  ├── Action Agent (1 Practical Next Step)  │
+             │  └── Pattern Digest Agent (Weekly Insight) │
+             └────────────────────────────────────────────┘
 ```
 
 ---
 
-## 7. Demo Flow
+## ▶️ Demo Flow
 
-1. **Authentication Gate**: Open the application to see the public landing screen. Click **Sign in with Google** to authenticate securely.
-2. **Modal Studio**: Select an input mode (Text typing, continuous Voice dictation, or Photo upload).
-3. **Capture & Save**: Type a thought (e.g., *“Struggling to start preparing for my software engineering interview tomorrow”*). Click **Reflect**.
-4. **Immediate Persistence**: The raw entry is saved instantly with status `saved` in Firestore before AI processing begins. If Gemini is temporarily unavailable, the UI shows “Your entry is safely saved. Reflection is temporarily unavailable.” and offers a retry without creating duplicate entries.
-5. **Signal & Confidence**: The **Mood & Signal Agent** returns structured tags (`Anxious`, `74% Confidence`, `Topics: Career, Preparation`) with evidence labels.
-6. **Streaming Reflection**: The **Reflection Agent** streams an empathetic, non-clinical reflection acknowledging the hurdle.
-7. **One Action Suggestion**: The **Action Agent** presents one optional step: *“Open one sample coding question and read just the problem description (5 mins)”*.
-8. **User Control**: Click **Accept**, **Edit** to modify the time/title, or **Dismiss**.
-9. **Calibration**: Override the mood tag to *“Determined”*. Aurora saves this correction to personalize subsequent signal predictions.
-10. **Pattern Digest & Security**: Navigate to **Patterns** to view recurring themes across approved entries, or visit **Security** to export your complete journal as Markdown or JSON.
-
----
-
-## 8. Reliability & Safety
-
-- **Save-Before-AI Guarantee**: User entries are committed to durable storage prior to initiating Gemini calls. If an API outage occurs, the entry remains safely stored with an `analysisStatus: "unavailable"` label.
-- **Multi-Model Fallback Ladder**: Backend requests cascade automatically across multiple Gemini models (e.g., `gemini-2.0-flash`, `gemini-1.5-flash`, and the latest stable flash model) before returning a recoverable error.
-- **Schema Validation & Defensive Parsing**: All structured Gemini outputs are validated against strict TypeScript interfaces. Malformed JSON triggers an internal recovery path rather than breaking the client UI.
-- **Idempotency & Duplicate Prevention**: Submission buttons disable immediately upon submission, preventing duplicate database writes and API calls during rapid clicking.
-- **Wellbeing Safeguard**: If the Mood Agent detects acute distress (`concern_flag: true`), Aurora suppresses productivity actions, offers warm crisis support resources, and excludes the entry from pattern digests and external webhooks.
+1. **Access Live App**: Open the Cloud Run URL and view the public landing page.
+2. **Sign In**: Authenticate securely using Google Sign-In via Firebase Auth.
+3. **Draft a Thought**: Enter a reflection using typed text, browser voice recognition, or a photo upload.
+4. **Instant Persistence**: Click **Reflect** — the raw text is committed to Firestore *before* AI calls execute.
+5. **Multi-Agent Processing**: Observe the structured mood tag, confidence score, and streaming empathetic reflection.
+6. **Action Recommendation**: Review the single suggested action; accept it, edit it, or export it to Google Calendar / `.ics`.
+7. **Inspect Explainability**: Click **"Why am I seeing this?"** to review the exact evidence and confidence metrics.
+8. **Weekly Pattern Digest**: Navigate to **Pattern Digest** to see thematic patterns synthesized across 5+ entries.
+9. **Verify Isolation**: Navigate to **Security & Privacy** to export data, calibrate mood memory, or sign out and verify complete session clearing.
 
 ---
 
-## 9. Security & Privacy
+## 🚀 Features Beyond the Base App
 
-- **Strict Owner Isolation**: Database reads and writes are restricted to `/users/{request.auth.uid}/...`. Cross-user data queries are denied at the database engine level.
-- **Zero Cross-Tenant Leakage**: Signing out immediately purges all in-memory React state (`entries`, `corrections`, `settings`) and detaches active Firestore snapshot listeners.
-- **No Hardcoded Secrets**: Secrets and API keys are injected via environment variables or Secret Manager, never exposed in client bundles or public repositories.
-- **Firebase Web Config vs. Server Secrets**: Firebase Web Configuration (`apiKey`, `projectId`, `appId`) identifies the Firebase project to the browser client and is secured by Firestore & Storage Security Rules. Sensitive API keys (such as `GEMINI_API_KEY`) are kept exclusively on the server side and mounted via Google Cloud Secret Manager.
-- **No Third-Party Analytics Tracking**: Raw reflection text is never sent to third-party telemetry, tracking pixels, or external LLM logging services.
-- **Full User Sovereignty**: Users can exclude individual entries from pattern synthesis, export complete records, or permanently wipe their account and data.
+- **Structured Multi-Agent Pipeline**: Decouples mood signal extraction, empathetic reflection, and action planning across isolated, purpose-built Gemini prompts.
+- **Weekly Pattern Digest with Evidence Counts**: Synthesizes recurring triggers and emotional trends across approved entries with exact date ranges and frequency counts (skips analysis if <5 entries).
+- **Explainability Panel**: Every insight includes a transparent breakdown of supporting entries, topic clusters, and confidence levels without exposing raw chain-of-thought traces.
+- **Continuous Voice Reflection**: Built-in speech-to-text dictation via Web Speech API with real-time feedback and browser capability detection.
+- **Privacy-Preserving Geolocation**: Coarse rounding (~1.1 km) before reverse geocoding to prevent pinpoint coordinate leakage.
+- **Comprehensive User Sovereignty**: Direct tag corrections (stored as few-shot user preferences), per-entry pattern exclusions, full JSON/Markdown data export, and complete account erasure.
+
+---
+
+## 🛡 Reliability & Safety
+
+- 💾 **Save-Before-AI Guarantee**: User entries are saved to durable Firestore storage prior to invoking Gemini. If an API outage occurs, the entry remains saved with an `analysisStatus: "unavailable"` label.
+- 🪜 **Automated Fallback Ladder**: Backend API calls cascade across prioritized models (`gemini-3.7-flash` → `gemini-3.1-flash-lite` → `gemini-flash-latest`) upon recoverable HTTP/API status errors (`503`, `429`, `500`).
+- 📋 **Schema Validation & Defensive Parsing**: All structured Gemini outputs are validated against strict TypeScript/JSON schemas, with single-retry repair routines for malformed payloads.
+- 🛑 **Duplicate Prevention & Idempotency**: Submission controls assign unique client idempotency keys and disable interactive buttons during execution to avoid accidental double-posts.
+- 🩺 **Non-Clinical Stance & Crisis Safety**: If acute distress is detected (`concern_flag: true`), Aurora suppresses productivity tasks, displays regional support hotlines, and excludes the entry from digests and webhooks.
+
+---
+
+## 🔒 Security & Privacy
+
+- **Strict Owner-Isolated Rules**: Firestore security rules restrict all read, write, and delete operations to `/users/{request.auth.uid}/...`. Cross-tenant data access is blocked at the database engine level.
+- **Zero Hardcoded Secrets**: Sensitive API keys (`GEMINI_API_KEY`) reside exclusively in **Google Cloud Secret Manager** and are dynamically bound to the Cloud Run service at deployment time.
+- **Zero Third-Party Telemetry**: Raw reflections and personal notes are never transmitted to third-party marketing pixels, analytics trackers, or public training sets.
+- **Complete Session Purging**: Signing out immediately clears all client-side React state (`entries`, `corrections`, `settings`) and unbinds active Firestore snapshot listeners.
+- **Full Data Portability & Erasure**: Users can download their complete history as structured JSON or Markdown, or wipe their account and all subcollections with one click.
 
 ### Firestore Security Rules Baseline
 
@@ -130,27 +141,10 @@ service cloud.firestore {
     match /{document=**} {
       allow read, write: if false;
     }
-
     match /users/{userId} {
       allow read, create, update, delete: if request.auth != null && request.auth.uid == userId;
 
-      match /entries/{entryId} {
-        allow read, create, update, delete: if request.auth != null && request.auth.uid == userId;
-      }
-
-      match /corrections/{correctionId} {
-        allow read, create, update, delete: if request.auth != null && request.auth.uid == userId;
-      }
-
-      match /actions/{actionId} {
-        allow read, create, update, delete: if request.auth != null && request.auth.uid == userId;
-      }
-
-      match /insights/{insightId} {
-        allow read, create, update, delete: if request.auth != null && request.auth.uid == userId;
-      }
-
-      match /settings/{settingId} {
+      match /{subcollection}/{docId} {
         allow read, create, update, delete: if request.auth != null && request.auth.uid == userId;
       }
     }
@@ -160,45 +154,44 @@ service cloud.firestore {
 
 ---
 
-## 10. Evaluation Evidence
+## 🧪 Evaluation Evidence
 
-> All metrics and results in this section are from internal automated tests and manual two-account isolation checks. They are not from a clinical study or external user research.
+> **Disclaimer**: All metrics and results in this section are from internal automated test suites and manual two-account isolation checks. They are not from a clinical study or external user research.
 
-*(Internal Test Results — Automated Suite & Two-Account Isolation Verification)*
-
-| Test Category | Test Case | Target / Constraint | Result |
-| :--- | :--- | :--- | :--- |
-| **Auth Gating** | Initial load unauthenticated state | Zero private data mounted; Landing View only | **PASS** |
-| **Security Rules** | Cross-tenant document read (`User B` → `User A`) | Permission denied by Firestore Rules | **PASS** |
-| **Security Rules** | Unauthenticated entry creation | Denied by security rules | **PASS** |
-| **Session Wipe** | User sign-out state clearance | Memory & listeners purged immediately | **PASS** |
-| **Account Switch** | Switch from `User A` to `User B` | `User B` receives clean state with 0 cross-leak | **PASS** |
-| **AI Fallback** | Simulated 503 on primary Gemini model | Seamless fallback to secondary model in ladder | **PASS** |
-| **Save Integrity** | Network disconnection during AI generation | Raw journal entry preserved in Firestore | **PASS** |
-| **JSON Schema** | Mood Tagger structured parsing | Valid JSON contract adherence in tests | **PASS** |
+| Test Category | Test Case Scenario | Validation Target | Status |
+| :--- | :--- | :--- | :---: |
+| **Auth Gating** | Unauthenticated user opens root application URL | Private dashboard unmounted; landing screen displayed | **PASS** |
+| **Security Rules** | `User B` attempts to read `/users/UserA/entries/123` | Firestore rules reject with `PERMISSION_DENIED` | **PASS** |
+| **Security Rules** | Unauthenticated client attempts Firestore write | Firestore rules reject with `PERMISSION_DENIED` | **PASS** |
+| **Session Wipe** | User clicks Sign Out | In-memory entries, settings, and listeners purged | **PASS** |
+| **Account Switch** | Sign out `User A` and authenticate as `User B` | `User B` sees 0 entries from `User A` | **PASS** |
+| **Save Integrity** | Simulate Gemini API 503 outage during submission | Raw journal entry persists safely in Firestore | **PASS** |
+| **Model Fallback** | Primary model rate-limit response | Automatically recovers via fallback model ladder | **PASS** |
+| **Schema Validation**| Malformed JSON returned from LLM | Caught, repaired or flagged as fallback metadata | **PASS** |
 
 ---
 
-## 10.1. How a judge can verify this project
+## 👀 How a Judge Can Verify This Project
 
-In under five minutes, a judge can:
+In under 5 minutes, a judge can verify Aurora's core capabilities:
 
-1. Open the live URL and confirm the sign-in gate and reflection flow.
-2. Run `npm test` (or your actual test command) locally.
-3. Run the Firestore rules tests against the emulator:
-   `firebase emulators:exec --only firestore "node --test firestore.rules.test.js"`
-4. Inspect `firestore.rules` and confirm owner-only access under `/users/{userId}/...`.
-5. Review this README’s architecture diagram and demo flow.
+1. **Verify Live Auth & Reflection Flow**: Open the [Live Cloud Run URL](https://ais-dev-wuo2gdbdhq7aa4ie75xoms-874611223113.asia-southeast1.run.app), sign in with Google, and create an entry using voice or text.
+2. **Confirm Multi-Agent & Calendar Output**: Check the structured mood tag, the streaming empathetic reflection, the suggested action item, and test the calendar export (`.ics` / Google Calendar).
+3. **Inspect Firestore Security Rules**: Review `firestore.rules` to confirm strict `/users/{userId}/...` path matching.
+4. **Execute Rules Unit Tests**: Run local automated tests using the Firebase Emulator:
+   ```bash
+   firebase emulators:exec --only firestore "node --test firestore.rules.test.js"
+   ```
+5. **Verify Cross-User Isolation**: Sign out, sign in with a different Google account, and verify that the first account's entries and settings are completely invisible.
 
 ---
 
-## 11. How to Run Locally
+## 🧑‍💻 How to Run Locally
 
 ### Prerequisites
-
 - Node.js 20+ installed
-- Google Cloud / Firebase CLI (`npm install -g firebase-tools`)
-- A Gemini API Key from [Google AI Studio](https://aistudio.google.com/)
+- Firebase CLI (`npm install -g firebase-tools`)
+- Gemini API Key from [Google AI Studio](https://aistudio.google.com/)
 
 ### Step-by-Step Setup
 
@@ -207,40 +200,43 @@ In under five minutes, a judge can:
 git clone [YOUR_GITHUB_REPO]
 cd aurora-reflection
 
-# 2. Install dependencies
+# 2. Install project dependencies
 npm install
 
-# 3. Configure environment variables
+# 3. Configure local environment variables
 cp .env.example .env
-# Edit .env and insert your GEMINI_API_KEY and Firebase Web Config
+# Open .env and add your GEMINI_API_KEY and Firebase Web Config
 
-# 4. Start the unified development server (Express + Vite on port 3000)
+# 4. Start the full-stack development server (Express + Vite on Port 3000)
 npm run dev
 
-# 5. Run Security Rules unit tests against the Firebase Emulator
+# 5. Run Firestore Security Rules unit tests
 firebase emulators:exec --only firestore "node --test firestore.rules.test.js"
 ```
 
 ---
 
-## 12. How to Deploy to Google Cloud Run
+## 🚢 How to Deploy to Google Cloud Run
+
+Aurora deploys as a containerized full-stack application with automatic HTTPS on **Google Cloud Run**:
 
 ```bash
-# 1. Set your GCP Project ID and Region
-gcloud config set project [YOUR_PROJECT_ID]
-REGION="asia-east1"
+# 1. Set Google Cloud Project ID & Target Region
+export PROJECT_ID="[YOUR_PROJECT_ID]"
+export REGION="asia-east1"
+gcloud config set project $PROJECT_ID
 
-# 2. Create the Gemini API Key secret in Secret Manager
+# 2. Store your Gemini API Key in Google Secret Manager
 gcloud secrets create GEMINI_API_KEY --replication-policy="automatic"
-echo -n "YOUR_GEMINI_API_KEY" | gcloud secrets versions add GEMINI_API_KEY --data-file=-
+echo -n "[YOUR_GEMINI_API_KEY]" | gcloud secrets versions add GEMINI_API_KEY --data-file=-
 
-# 3. Grant Secret Manager access to Cloud Run service account
-PROJECT_NUM=$(gcloud projects describe $(gcloud config get-value project) --format="value(projectNumber)")
+# 3. Grant Secret Manager access to the Cloud Run service account
+PROJECT_NUM=$(gcloud projects describe $PROJECT_ID --format="value(projectNumber)")
 gcloud secrets add-iam-policy-binding GEMINI_API_KEY \
   --member="serviceAccount:${PROJECT_NUM}-compute@developer.gserviceaccount.com" \
   --role="roles/secretmanager.secretAccessor"
 
-# 4. Deploy the application to Cloud Run
+# 4. Build and deploy to Cloud Run with mandatory campaign labels
 gcloud run deploy aurora-reflection \
   --source . \
   --region $REGION \
@@ -249,30 +245,28 @@ gcloud run deploy aurora-reflection \
   --set-secrets GEMINI_API_KEY=GEMINI_API_KEY:latest \
   --update-labels=dev-tutorial=cloud-run-ai-challenge
 
-# Alternatively, if already deployed, apply the verification label:
-gcloud run services update aurora-reflection \
-  --region=$REGION \
-  --update-labels=dev-tutorial=cloud-run-ai-challenge
-
-# 5. Deploy Firestore Security Rules
+# 5. Deploy Firestore Security Rules to production
 firebase deploy --only firestore:rules
 ```
 
 ---
 
-## 13. Known Limitations
+## ⚠️ Known Limitations
 
-- **Probabilistic Signals**: Mood classification and confidence scores reflect probabilistic language patterns, not clinical diagnoses.
-- **Voice Recognition Variability**: Voice dictation relies on Web Speech API support, which varies across browsers and ambient noise levels.
-- **Multimodal Interpretation**: Visual image tagging may occasionally misinterpret abstract artwork or handwritten notes.
-- **Pattern Thresholds**: Meaningful pattern insights require at least 5 user-approved entries; Aurora intentionally declines to force insights on insufficient data.
-- **Non-Clinical Boundary**: Aurora is an introspective tool and cannot provide crisis intervention, medical advice, or psychiatric treatment.
+- **Probabilistic Insights**: Mood classification and confidence scores represent natural language pattern detection, not clinical or diagnostic assessments.
+- **Browser Speech Support**: Voice dictation relies on Web Speech API implementations, which vary across browser engines (e.g., Chrome vs. Firefox).
+- **Coarse Location Precision**: Geocoding deliberately rounds coordinates (~1.1 km) to safeguard exact physical locations.
+- **Minimum Data for Digests**: Pattern synthesis requires at least 5 approved entries; Aurora will not force speculative conclusions on sparse data.
+- **Introspective Scope**: Aurora is designed as a personal reflection tool, not a clinical treatment system or emergency crisis line.
 
 ---
 
-## 14. Future Work
+## 🔮 Future Work
 
-- **Wearable Health Correlation**: Optional local correlation with sleep or step metrics to contextualize energy levels.
-- **Bi-Directional Calendar Integration**: One-click scheduling of accepted 5-minute action items into Google Calendar.
+- 🔑 **Client-Side Zero-Knowledge Encryption**: Optional passphrase-derived client-side encryption of raw journal entries prior to Firestore sync.
+- 📱 **Offline Progressive Web App (PWA)**: Full service worker offline caching allowing offline drafting with automatic sync upon reconnection.
+- 🔄 **Two-Way Calendar Sync**: Bi-directional status synchronization to update Aurora actions when completed in Google Calendar.
+- ⌚ **Local Wearable Correlation**: Optional, on-device correlation of reflection mood trends against sleep and activity metrics.
+onal Calendar Integration**: One-click scheduling of accepted 5-minute action items into Google Calendar.
 - **Client-Side End-to-End Encryption (E2EE)**: Optional zero-knowledge passphrase encryption for journal text before Firestore writes.
 - **Offline PWA Sync**: Full Service Worker caching enabling offline journal drafting with automatic background sync upon reconnection.
